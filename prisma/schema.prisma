@@ -1,0 +1,318 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum MovieStatus {
+  DRAFT
+  PUBLISHED
+  UNPUBLISHED
+  ARCHIVED
+}
+
+enum RightsStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum VideoProvider {
+  CLOUDINARY
+  NEON_OBJECT_STORAGE
+}
+
+enum VideoStatus {
+  PROCESSING
+  READY
+  UNAVAILABLE
+}
+
+enum PurchaseStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+  REVERSED
+}
+
+enum PaymentProvider {
+  MARZPAY
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+  REVERSED
+}
+
+enum TikTokMatchStatus {
+  UNVERIFIED
+  VERIFIED
+  REJECTED
+}
+
+enum RevenueAllocationStatus {
+  AVAILABLE
+  REINVESTED
+}
+
+enum SharePayoutStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  PAID
+}
+
+model UserProfile {
+  userId        String            @id
+  email         String?           @unique
+  displayName   String?
+  accountStatus AccountStatus     @default(ACTIVE)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  adminShare    AdminShareholder?
+}
+
+model Movie {
+  id               String       @id @default(cuid())
+  title            String
+  slug             String       @unique
+  synopsis         String?      @db.Text
+  posterUrl        String?
+  backdropUrl      String?
+  releaseYear      Int?
+  runtimeMinutes   Int?
+  language         String?
+  status           MovieStatus  @default(DRAFT)
+  rightsStatus     RightsStatus @default(PENDING)
+  rightsSource     String?
+  rightsReviewedAt DateTime?
+  isFeatured       Boolean      @default(false)
+  publishedAt      DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  genres           MovieGenre[]
+  videoAssets      VideoAsset[]
+  tiktokLinks      TikTokLink[]
+
+  @@index([status, publishedAt])
+  @@index([isFeatured, status])
+}
+
+model Genre {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  slug      String       @unique
+  movies    MovieGenre[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model MovieGenre {
+  movieId String
+  genreId String
+  movie   Movie  @relation(fields: [movieId], references: [id], onDelete: Restrict)
+  genre   Genre  @relation(fields: [genreId], references: [id], onDelete: Restrict)
+
+  @@id([movieId, genreId])
+  @@index([genreId, movieId])
+}
+
+model VideoAsset {
+  id              String        @id @default(cuid())
+  movieId         String
+  provider        VideoProvider
+  providerAssetId String
+  playbackProfile String?
+  status          VideoStatus   @default(PROCESSING)
+  durationSeconds Int?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  movie           Movie         @relation(fields: [movieId], references: [id], onDelete: Restrict)
+
+  @@unique([provider, providerAssetId])
+  @@index([movieId, status])
+}
+
+model AccessProduct {
+  id           String     @id @default(cuid())
+  name         String     @unique
+  durationDays Int
+  priceUgx     Int
+  isAvailable  Boolean    @default(false)
+  sortOrder    Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  purchases    Purchase[]
+
+  @@index([isAvailable, sortOrder])
+}
+
+model Purchase {
+  id              String                   @id @default(cuid())
+  userId          String
+  accessProductId String
+  productName     String
+  durationDays    Int
+  amountUgx       Int
+  currency        String                   @default("UGX")
+  status          PurchaseStatus           @default(PENDING)
+  idempotencyKey  String                   @unique
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  accessProduct   AccessProduct            @relation(fields: [accessProductId], references: [id], onDelete: Restrict)
+  transactions    PaymentTransaction[]
+  entitlement     Entitlement?
+  revenueShares   AdminRevenueAllocation[]
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model PaymentTransaction {
+  id                    String          @id @default(cuid())
+  purchaseId            String
+  provider              PaymentProvider
+  providerReference     String
+  providerTransactionId String?         @unique
+  status                PaymentStatus   @default(PENDING)
+  amountUgx             Int
+  currency              String          @default("UGX")
+  verifiedAt            DateTime?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  purchase              Purchase        @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  events                PaymentEvent[]
+
+  @@unique([provider, providerReference])
+  @@index([purchaseId, createdAt])
+  @@index([status, createdAt])
+}
+
+model PaymentEvent {
+  id              String              @id @default(cuid())
+  provider        PaymentProvider
+  providerEventId String
+  eventType       String
+  transactionId   String?
+  receivedAt      DateTime            @default(now())
+  processedAt     DateTime?
+  transaction     PaymentTransaction? @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+
+  @@unique([provider, providerEventId])
+  @@index([processedAt, receivedAt])
+}
+
+model Entitlement {
+  id         String    @id @default(cuid())
+  userId     String
+  purchaseId String    @unique
+  startsAt   DateTime
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  purchase   Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+
+  @@index([userId, expiresAt])
+  @@index([userId, revokedAt, expiresAt])
+}
+
+model FinancialSharePolicy {
+  id        String   @id
+  revision  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AdminShareholder {
+  userId         String                   @id
+  percentageBps  Int
+  isActive       Boolean                  @default(true)
+  revision       Int                      @default(0)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  profile        UserProfile              @relation(fields: [userId], references: [userId], onDelete: Restrict)
+  allocations    AdminRevenueAllocation[]
+  payoutRequests SharePayoutRequest[]
+
+  @@index([isActive, percentageBps])
+}
+
+model AdminRevenueAllocation {
+  id                String                  @id @default(cuid())
+  purchaseId        String
+  shareholderUserId String
+  percentageBps     Int
+  grossAmountUgx    Int
+  amountUgx         Int
+  status            RevenueAllocationStatus @default(AVAILABLE)
+  createdAt         DateTime                @default(now())
+  purchase          Purchase                @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  shareholder       AdminShareholder        @relation(fields: [shareholderUserId], references: [userId], onDelete: Restrict)
+
+  @@unique([purchaseId, shareholderUserId])
+  @@index([shareholderUserId, status, createdAt])
+}
+
+model SharePayoutRequest {
+  id                String            @id @default(cuid())
+  shareholderUserId String
+  amountUgx         Int
+  status            SharePayoutStatus @default(REQUESTED)
+  requestedBy       String
+  reviewedBy        String?
+  externalReference String?
+  reviewNote        String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  shareholder       AdminShareholder  @relation(fields: [shareholderUserId], references: [userId], onDelete: Restrict)
+
+  @@index([shareholderUserId, status, createdAt])
+  @@index([status, createdAt])
+}
+
+model TikTokLink {
+  id                String            @id @default(cuid())
+  canonicalUrl      String            @unique
+  movieId           String
+  matchStatus       TikTokMatchStatus @default(UNVERIFIED)
+  sceneStartSeconds Int?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  movie             Movie             @relation(fields: [movieId], references: [id], onDelete: Restrict)
+
+  @@index([movieId, matchStatus])
+}
+
+model PlatformSetting {
+  key       String   @id
+  value     Json
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId, createdAt])
+}
