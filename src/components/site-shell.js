@@ -1,10 +1,18 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export function SiteHeader() {
   return (
     <header className="site-header">
       <Link className="brand" href="/" aria-label="Vistara home">
-        VISTARA<span>.</span>
+        <Image
+          alt=""
+          className="brand-icon"
+          height={34}
+          src="/vistara-icon.png"
+          width={34}
+        />
+        <span className="brand-name">VISTARA<span>.</span></span>
       </Link>
       <nav aria-label="Main navigation" className="site-nav">
         <Link href="/movies">Discover</Link>
@@ -23,7 +31,14 @@ export function SiteFooter() {
     <>
       <footer className="site-footer">
         <Link className="brand" href="/">
-          VISTARA<span>.</span>
+          <Image
+            alt=""
+            className="brand-icon"
+            height={34}
+            src="/vistara-icon.png"
+            width={34}
+          />
+          <span className="brand-name">VISTARA<span>.</span></span>
         </Link>
         <p>Stories worth staying in for.</p>
         <span>Uganda · UGX</span>

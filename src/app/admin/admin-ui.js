@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 const navigation = [
@@ -25,7 +26,14 @@ export function AdminShell({ access, children }) {
     <div className="admin-shell">
       <aside className="admin-sidebar">
         <Link className="brand" href="/">
-          VISTARA<span>.</span>
+          <Image
+            alt=""
+            className="brand-icon"
+            height={34}
+            src="/vistara-icon.png"
+            width={34}
+          />
+          <span className="brand-name">VISTARA<span>.</span></span>
         </Link>
         <p className="admin-sidebar-label">Control room</p>
         <nav aria-label="Administration" className="admin-nav">
