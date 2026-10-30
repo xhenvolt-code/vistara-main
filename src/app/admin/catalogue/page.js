@@ -40,12 +40,15 @@ export default async function AdminCataloguePage() {
 
       <section className="admin-panel">
         <div className="admin-panel-heading">
-          <h2>Add a movie</h2>
-          <Link className="text-link" href="/admin/movies/new">
-            Open upload workflow
+          <h2>Add a movie video</h2>
+          <Link className="button-primary" href="/admin/movies/new">
+            Upload MP4
           </Link>
         </div>
-        <MovieEditor />
+        <p className="muted">
+          Movie creation requires only a title and MP4. Artwork, synopsis,
+          rights records, cast, and other catalogue details can be added later.
+        </p>
       </section>
 
       <section className="admin-panel">

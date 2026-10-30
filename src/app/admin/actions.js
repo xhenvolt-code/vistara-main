@@ -205,9 +205,13 @@ export async function saveMovie(_previousState, formData) {
         title: data.title,
         slug: data.slug,
         synopsis: data.synopsis || null,
-        director: data.director || null,
-        cast: data.cast,
-        contentRating: data.contentRating || null,
+        ...(data.director || data.cast.length || data.contentRating
+          ? {
+              director: data.director || null,
+              cast: data.cast,
+              contentRating: data.contentRating || null,
+            }
+          : {}),
         releaseYear: data.releaseYear,
         runtimeMinutes: data.runtimeMinutes,
         language: data.language || null,
@@ -233,10 +237,14 @@ export async function saveMovie(_previousState, formData) {
         movie = await tx.movie.update({
           where: { id: data.id },
           data: movieData,
+          select: { id: true },
         });
         await tx.movieGenre.deleteMany({ where: { movieId: movie.id } });
       } else {
-        movie = await tx.movie.create({ data: movieData });
+        movie = await tx.movie.create({
+          data: movieData,
+          select: { id: true },
+        });
       }
 
       for (const name of data.genres) {
@@ -284,6 +292,12 @@ export async function saveMovie(_previousState, formData) {
   } catch (error) {
     if (error?.code === "P2002" || error?.code === "P2025") {
       return { error: prismaMessage(error, "Unable to save this movie.") };
+    }
+    if (error?.code === "P2022") {
+      return {
+        error:
+          "The database does not have the optional movie-detail columns yet. Apply the pending movie-media migration to save director, cast, and content rating. A title and MP4 can still be uploaded from the movie upload page.",
+      };
     }
     if (
       error instanceof Error &&
