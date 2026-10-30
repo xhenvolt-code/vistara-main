@@ -74,6 +74,11 @@ export default async function MovieWorkspacePage({ params }) {
   return (
     <>
       <AdminPageHeading eyebrow="Movie management" title={movie.title}>
+        {movie.status !== "ARCHIVED" && (
+          <Link className="button-primary" href="#video-upload">
+            {readyAsset ? "Replace MP4 video" : "Upload MP4 video"}
+          </Link>
+        )}
         <Link className="button-secondary" href="/admin/movies">
           Back to library
         </Link>
@@ -122,6 +127,17 @@ export default async function MovieWorkspacePage({ params }) {
         </div>
       </div>
 
+      {movie.status !== "ARCHIVED" && (
+        <section className="admin-panel" id="video-upload">
+          <h2>{readyAsset ? "Replace movie video" : "Upload movie video"}</h2>
+          <p className="muted">
+            Select an MP4 file up to 5 GiB. It uploads directly to Neon Object
+            Storage, then Vistara verifies it before making it available.
+          </p>
+          <VideoUploadPanel movieId={movie.id} />
+        </section>
+      )}
+
       <section className="admin-panel">
         <h2>Movie playback preview</h2>
         {readyAsset ? (
@@ -168,18 +184,6 @@ export default async function MovieWorkspacePage({ params }) {
           <p className="muted">No video uploads have been started.</p>
         )}
       </section>
-
-      {movie.status !== "ARCHIVED" && (
-        <section className="admin-panel">
-          <h2>{readyAsset ? "Replace movie video" : "Upload movie video"}</h2>
-          <p className="muted">
-            A replacement becomes active only after upload verification. A
-            failed or incomplete replacement does not replace the current
-            ready video.
-          </p>
-          <VideoUploadPanel movieId={movie.id} />
-        </section>
-      )}
 
       <section className="admin-panel">
         <h2>Movie metadata and publishing</h2>

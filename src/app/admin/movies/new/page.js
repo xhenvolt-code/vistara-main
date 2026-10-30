@@ -15,14 +15,14 @@ export default async function NewMoviePage() {
 
   return (
     <>
-      <AdminPageHeading eyebrow="Movie management" title="Add a movie" />
+      <AdminPageHeading eyebrow="Movie management · Step 1 of 2" title="Add a movie" />
       <p className="muted admin-intro">
-        Create the movie record first, then upload and verify its MP4 video in
-        the movie workspace. New movies remain drafts until you explicitly
-        publish them.
+        Add the movie details and save. You will then continue to Step 2, where
+        you can select and upload the MP4 video. New movies remain drafts until
+        you explicitly publish them.
       </p>
       <section className="admin-panel">
-        <h2>Movie metadata</h2>
+        <h2>Step 1: Movie details and artwork</h2>
         <MovieEditor label="Create movie record" />
       </section>
     </>

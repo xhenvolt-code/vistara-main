@@ -225,7 +225,9 @@ export default async function MovieLibraryPage({ searchParams }) {
                   </div>
                   <small>Updated {movie.updatedAt.toLocaleDateString()}</small>
                   <Link className="text-link" href={`/admin/movies/${movie.id}`}>
-                    Open movie workspace
+                    {asset?.status === "READY"
+                      ? "Manage movie media"
+                      : "Upload MP4 video"}
                   </Link>
                 </div>
               </article>
