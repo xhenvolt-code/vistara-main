@@ -1,9 +1,9 @@
 import { getAdminAccess } from "@/server/auth/admin";
 import { prisma } from "@/server/db/prisma";
 import {
-  deleteNeonUploadObject,
-  verifyNeonVideoUpload,
-} from "@/server/storage/neon-object-storage";
+  deleteCloudinaryVideoAsset,
+  verifyCloudinaryVideoUpload,
+} from "@/server/storage/cloudinary-video";
 
 function isSameOrigin(request) {
   const appBaseUrl = process.env.APP_BASE_URL;
@@ -28,7 +28,7 @@ export async function POST(request, { params }) {
     where: {
       id: assetId,
       movieId,
-      provider: "NEON_OBJECT_STORAGE",
+      provider: "CLOUDINARY",
       status: "UPLOADING",
     },
     select: {
@@ -44,10 +44,10 @@ export async function POST(request, { params }) {
     return Response.json({ error: "This upload is no longer active." }, { status: 404 });
   }
 
-  let object;
+  let resource;
 
   try {
-    object = await verifyNeonVideoUpload(asset.providerAssetId);
+    resource = await verifyCloudinaryVideoUpload(asset.providerAssetId);
   } catch (error) {
     console.error("Video upload completion could not be verified.", {
       movieId,
@@ -55,14 +55,21 @@ export async function POST(request, { params }) {
       message: error instanceof Error ? error.message : "Unknown storage error",
     });
     return Response.json(
-      { error: "The uploaded file could not be verified in object storage." },
+      { error: "The uploaded file could not be verified in Cloudinary." },
       { status: 422, headers: { "Cache-Control": "no-store" } },
     );
   }
 
+  const uploadedBytes = Number.isSafeInteger(resource.bytes)
+    ? BigInt(resource.bytes)
+    : null;
+
   if (
-    BigInt(object.ContentLength ?? -1) !== asset.fileSizeBytes ||
-    object.ContentType?.toLowerCase() !== asset.contentType
+    resource.public_id !== asset.providerAssetId ||
+    resource.resource_type !== "video" ||
+    resource.type !== "authenticated" ||
+    resource.format?.toLowerCase() !== "mp4" ||
+    uploadedBytes !== asset.fileSizeBytes
   ) {
     const failed = await prisma.videoAsset.updateMany({
       where: { id: asset.id, status: "UPLOADING" },
@@ -76,7 +83,7 @@ export async function POST(request, { params }) {
       );
     }
 
-    await deleteNeonUploadObject(asset.providerAssetId);
+    await deleteCloudinaryVideoAsset(asset.providerAssetId);
     await prisma.auditLog.create({
       data: {
         actorId: access.userId,
@@ -95,7 +102,13 @@ export async function POST(request, { params }) {
   await prisma.$transaction(async (tx) => {
     const updated = await tx.videoAsset.updateMany({
       where: { id: asset.id, status: "UPLOADING" },
-      data: { status: "READY" },
+      data: {
+        status: "READY",
+        durationSeconds:
+          Number.isFinite(resource.duration) && resource.duration > 0
+            ? Math.floor(resource.duration)
+            : null,
+      },
     });
 
     if (updated.count !== 1) {

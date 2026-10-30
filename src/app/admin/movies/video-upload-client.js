@@ -12,23 +12,44 @@ async function readJson(response) {
   return body;
 }
 
-function putFile(uploadUrl, file, onProgress) {
+const uploadChunkSize = 20_000_000;
+
+async function getChunkSignature(movieId, assetId) {
+  const response = await fetch(
+    `/api/admin/movies/${movieId}/uploads/${assetId}/signature`,
+    { method: "POST" },
+  );
+  return readJson(response);
+}
+
+function uploadChunk(upload, file, start, end, uniqueUploadId, onProgress) {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
-    request.open("PUT", uploadUrl);
-    request.setRequestHeader("Content-Type", "video/mp4");
+    request.open("POST", upload.uploadUrl);
+    request.setRequestHeader(
+      "Content-Range",
+      `bytes ${start}-${end - 1}/${end === file.size ? file.size : -1}`,
+    );
+    request.setRequestHeader("X-Unique-Upload-Id", uniqueUploadId);
     request.upload.addEventListener("progress", (event) => {
       if (event.lengthComputable) {
-        onProgress(event.loaded, event.total);
+        onProgress(start + Math.min(event.loaded, end - start));
       }
     });
     request.addEventListener("load", () => {
       if (request.status >= 200 && request.status < 300) {
         resolve();
       } else {
+        let providerMessage;
+        try {
+          providerMessage = JSON.parse(request.responseText).error?.message;
+        } catch {
+          providerMessage = null;
+        }
         reject(
           new Error(
-            `Storage rejected the upload (HTTP ${request.status}). Check the storage bucket CORS configuration and retry.`,
+            providerMessage ||
+              `Cloudinary rejected the upload (HTTP ${request.status}). Check the file and Cloudinary account limits, then retry.`,
           ),
         );
       }
@@ -36,12 +57,19 @@ function putFile(uploadUrl, file, onProgress) {
     request.addEventListener("error", () => {
       reject(
         new Error(
-          "The upload connection failed. Check your network and storage bucket CORS configuration, then retry.",
+          "The Cloudinary upload connection failed. Check your network and Cloudinary upload access, then retry.",
         ),
       );
     });
     request.addEventListener("abort", () => reject(new Error("Upload was cancelled.")));
-    request.send(file);
+    const form = new FormData();
+    form.append("file", file.slice(start, end), file.name);
+    form.append("api_key", upload.apiKey);
+    form.append("timestamp", String(upload.timestamp));
+    form.append("signature", upload.signature);
+    form.append("public_id", upload.publicId);
+    form.append("type", upload.type);
+    request.send(form);
   });
 }
 
@@ -61,16 +89,30 @@ export async function uploadMovieVideo(movieId, file, { onProgress, onStatus }) 
     });
     const upload = await readJson(initResponse);
     assetId = upload.assetId;
-    onStatus("Uploading directly to Vistara video storage...");
+    onStatus("Uploading directly to Cloudinary...");
     const startedAt = Date.now();
+    const uniqueUploadId = crypto.randomUUID();
 
-    await putFile(upload.uploadUrl, file, (loaded, total) => {
-      const percent = Math.floor((loaded / total) * 100);
-      const elapsedSeconds = Math.max((Date.now() - startedAt) / 1000, 0.1);
-      onProgress(percent, loaded / elapsedSeconds);
-    });
+    for (let start = 0; start < file.size; start += uploadChunkSize) {
+      const end = Math.min(start + uploadChunkSize, file.size);
+      const chunkUpload =
+        start === 0 ? upload : await getChunkSignature(movieId, assetId);
 
-    onStatus("Upload complete. Verifying the stored video...");
+      await uploadChunk(
+        chunkUpload,
+        file,
+        start,
+        end,
+        uniqueUploadId,
+        (loaded) => {
+          const percent = Math.floor((loaded / file.size) * 100);
+          const elapsedSeconds = Math.max((Date.now() - startedAt) / 1000, 0.1);
+          onProgress(percent, loaded / elapsedSeconds);
+        },
+      );
+    }
+
+    onStatus("Upload complete. Verifying the Cloudinary video...");
     const completeResponse = await fetch(
       `/api/admin/movies/${movieId}/uploads/${assetId}/complete`,
       { method: "POST" },

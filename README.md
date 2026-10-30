@@ -19,11 +19,11 @@ intended environment.
 | --- | --- | --- |
 | Customer application | Responsive homepage, discovery, movie detail, passes, sign-in/sign-up and reset screens | Catalogue is database-backed; only publish content with documented rights and a verified supported video |
 | Authentication | Neon email auth, Google OAuth callback, profile synchronization, admin allowlists | Verify OAuth, cookies, reset, and account lifecycle on the deployed domain |
-| Administration | Overview, movie library/search/filtering, metadata, poster/backdrop uploads, direct MP4 upload, movie preview/playback, rights, products, payments, users, storage, audit, and revenue-share screens | Server-side authorization is present; apply the new additive media migration and verify bucket CORS/provider behavior before use |
+| Administration | Overview, movie library/search/filtering, metadata, poster/backdrop uploads, direct MP4 upload, movie preview/playback, rights, products, payments, users, storage, audit, and revenue-share screens | Server-side authorization is present; verify Cloudinary credentials, account limits, and production playback before use |
 | Payments | MarzPay Uganda collection API helper, callback verification, idempotent reconciliation, and entitlement creation | No live collection or settlement has been certified; the passes page currently says checkout is not enabled |
 | Revenue governance | Admin allocations from future verified gross collections, reinvestment preferences, audited payout requests, independent superadmin review | Internal accounting only; no legal equity, provider balance, or automated MarzPay payout |
-| Object storage | S3-compatible Neon Object Storage inventory, short-lived signed direct uploads for movie MP4s and artwork, and upload-completion object verification | Multipart/resumable upload and enforced storage quota are not implemented; dashboard usage is not Neon billing |
-| Video | Admin MP4 upload and preview, plus entitlement-checked MP4 byte-range playback from Neon Object Storage | Transcoding, adaptive HLS/DASH, captions, CDN delivery, Cloudinary playback, upload resume, and production streaming performance are not implemented or certified |
+| Object storage | S3-compatible Neon Object Storage inventory and artwork uploads | Movie MP4 video is stored in Cloudinary, not Neon Object Storage |
+| Video | Signed, chunked Cloudinary MP4 uploads; server-side upload verification; admin preview; and entitlement-checked byte-range playback through Vistara | Cloudinary plan limits apply; transcoding, adaptive HLS/DASH, captions, and production streaming performance are not implemented or certified |
 | Mobile API | Catalogue, available products, and authenticated profile/entitlement/purchase endpoints | Integrate and validate against the intended client before release |
 
 ## Technology
@@ -31,9 +31,11 @@ intended environment.
 - Next.js 16 App Router, React 19, and Tailwind CSS 4.
 - Neon PostgreSQL through Prisma 7 and the Neon serverless adapter.
 - Neon Managed Auth for user sessions and social sign-in.
-- Neon Object Storage through its S3-compatible endpoint.
-- MarzPay collection/reconciliation integration; Cloudinary is a planned media
-  provider and is not currently an implemented upload or playback service.
+- Neon Object Storage through its S3-compatible endpoint for artwork and
+  storage inventory.
+- Cloudinary for signed movie-video uploads, verification, and authenticated
+  playback.
+- MarzPay collection/reconciliation integration.
 - Node.js and npm. The lockfile is `package-lock.json`.
 
 The interface uses a light palette by default and switches to its dark palette
@@ -79,7 +81,7 @@ does not change the device's system theme.
 
 To add a movie, open **Admin → Upload movie**, choose an MP4, enter its title,
 and select **Create movie and upload MP4**. The video uploads directly to
-storage while the new movie remains a draft. Artwork and other catalogue
+Cloudinary in chunks while the new movie remains a draft. Artwork and other catalogue
 details are optional and can be added later in the movie workspace. The movie
 record must exist before artwork can be uploaded; save changes after uploading
 artwork to associate it with the record. Do not use media unless its
@@ -95,9 +97,9 @@ Use `.env.example` as the variable-name reference. Do not commit `.env.local`.
 | `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET` | Neon Managed Auth endpoint and signed session-cookie secret |
 | `APP_BASE_URL` | Canonical application origin used to construct auth callback links |
 | `ADMIN_EMAILS`, `SUPERADMIN_EMAILS` | Server-side administrator and superadministrator allowlists |
-| `AWS_ENDPOINT_URL_S3`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `STORAGE_BUCKET` | S3-compatible Neon Object Storage access for inventory, signed uploads, artwork, and MP4 playback |
+| `AWS_ENDPOINT_URL_S3`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `STORAGE_BUCKET` | S3-compatible Neon Object Storage access for inventory and artwork |
 | `STORAGE_HARD_LIMIT_BYTES` | Advisory application storage limit; not an enforced Neon quota |
-| `CLOUDINARY_URL` | Cloudinary credential format reserved for media integration |
+| `CLOUDINARY_URL` | Cloudinary credentials for signed MP4 upload, verification, and authenticated playback |
 | `MARZPAY_API_KEY`, `MARZPAY_API_SECRET`, `MARZPAY_BASE_URL` | MarzPay API configuration |
 | `MARZPAY_WEBHOOK_SECRET`, `MARZPAY_CALLBACK_URL` | Callback verification/configuration and public webhook URL |
 
@@ -161,27 +163,21 @@ this repository.
   Payout requests need independent superadmin review and an externally
   completed transfer reference. The application does not send payouts through
   MarzPay.
-- The current video route streams MP4 objects from the configured S3-compatible
-  bucket and checks the signed-in user's active paid entitlement on each
-  request, including byte-range reads. Ready playback assets must use provider
-  `NEON_OBJECT_STORAGE`, a relative `.mp4` object key, and a completed
-  size/content-type verification. This is a basic
-  application-proxied playback path, not adaptive streaming or a CDN; validate
-  provider range behavior and bandwidth/cost limits before production use.
-- Movie upload sends a short-lived, signed single-part PUT directly from the
-  browser to the configured storage endpoint; video files are limited to 5
-  GiB, and poster/backdrop images to 10 MiB. Configure the storage bucket CORS
-  policy to allow the exact application origin, `PUT`, and the `Content-Type`
-  request header. Verify that the deployed Neon Object Storage endpoint
-  supports signed `PutObject`, `HeadObject`, `DeleteObject`, and ranged
-  `GetObject` operations before enabling this workflow. Multipart/resumable
-  uploads are not implemented; large uploads may need a dedicated media
-  provider.
-- A successfully uploaded MP4 is marked ready after its object size and MIME
-  type are verified. This verifies the uploaded object only; it does not
-  inspect codecs, scan the file, transcode it, or create adaptive renditions.
-  The admin preview and customer player proxy the MP4 through the application,
-  so this is not yet a high-scale streaming architecture.
+- Customer playback checks the signed-in user's active paid entitlement on
+  each request, including byte-range reads. Cloudinary assets use authenticated
+  delivery and a short-lived server-generated download URL; the Cloudinary URL
+  is not exposed to the browser. The admin preview is also proxied through the
+  application.
+- Movie MP4 uploads are signed by the server and sent directly from the browser
+  to Cloudinary in chunks. The application allows files up to 5 GiB, subject to
+  Cloudinary account limits. Neon Object Storage remains in use for artwork
+  and storage inventory; artwork uploads continue to depend on its configured
+  endpoint and CORS policy.
+- A successfully uploaded MP4 is marked ready only after Cloudinary confirms
+  the authenticated video asset, MP4 format, and expected file size. This
+  verifies the uploaded asset only; it does not inspect codecs, scan the file,
+  transcode it, or create adaptive renditions. This is not yet a high-scale
+  streaming architecture.
 - The storage screen reports objects visible to the configured S3-compatible
   bucket/branch. It is not a project-wide Neon billing meter, and the configured
   cap is advisory until uploads enforce it.

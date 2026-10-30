@@ -2,6 +2,7 @@ import { auth } from "@/server/auth/neon";
 import { isValidByteRange } from "@/domain/video-playback";
 import { prisma } from "@/server/db/prisma";
 import { authorizePlayback } from "@/server/services/entitlements";
+import { fetchCloudinaryVideo } from "@/server/storage/cloudinary-video";
 import { getNeonVideoObject } from "@/server/storage/neon-object-storage";
 
 function storageFailure(error, slug) {
@@ -44,7 +45,7 @@ export async function GET(request, { params }) {
       videoAssets: {
         where: {
           status: "READY",
-          provider: "NEON_OBJECT_STORAGE",
+          provider: { in: ["CLOUDINARY", "NEON_OBJECT_STORAGE"] },
           contentType: "video/mp4",
           fileSizeBytes: { not: null },
         },
@@ -74,7 +75,7 @@ export async function GET(request, { params }) {
 
   const asset = movie.videoAssets[0];
 
-  if (asset?.provider !== "NEON_OBJECT_STORAGE") {
+  if (!["CLOUDINARY", "NEON_OBJECT_STORAGE"].includes(asset?.provider)) {
     return Response.json(
       { error: "This title does not have a supported playback asset yet." },
       { status: 501, headers: { "Cache-Control": "no-store" } },
@@ -96,12 +97,39 @@ export async function GET(request, { params }) {
   let object;
 
   try {
-    object = await getNeonVideoObject(asset.providerAssetId, range ?? undefined);
+    object =
+      asset.provider === "CLOUDINARY"
+        ? await fetchCloudinaryVideo(asset.providerAssetId, range ?? undefined)
+        : await getNeonVideoObject(asset.providerAssetId, range ?? undefined);
   } catch (error) {
     return storageFailure(error, slug);
   }
 
-  if (!object.Body) {
+  if (asset.provider === "CLOUDINARY" && object.status === 416) {
+    const headers = new Headers({
+      "Accept-Ranges": "bytes",
+      "Cache-Control": "private, no-store",
+    });
+    const contentRange = object.headers.get("content-range");
+    if (contentRange) {
+      headers.set("Content-Range", contentRange);
+    }
+    return new Response(null, { status: 416, headers });
+  }
+
+  const body =
+    asset.provider === "CLOUDINARY" ? object.body : object.Body?.transformToWebStream();
+
+  if (
+    (asset.provider === "CLOUDINARY" && !object.ok) ||
+    !body
+  ) {
+    if (asset.provider === "CLOUDINARY" && !object.ok) {
+      console.error("Cloudinary video request failed.", {
+        slug,
+        status: object.status,
+      });
+    }
     return storageFailure(new Error("Storage returned no video body."), slug);
   }
 
@@ -112,15 +140,29 @@ export async function GET(request, { params }) {
     "X-Content-Type-Options": "nosniff",
   });
 
-  if (object.ContentLength !== undefined) {
-    headers.set("Content-Length", String(object.ContentLength));
+  const contentLength =
+    asset.provider === "CLOUDINARY"
+      ? object.headers.get("content-length")
+      : object.ContentLength;
+  const contentRange =
+    asset.provider === "CLOUDINARY"
+      ? object.headers.get("content-range")
+      : object.ContentRange;
+
+  if (contentLength !== undefined && contentLength !== null) {
+    headers.set("Content-Length", String(contentLength));
   }
-  if (object.ContentRange) {
-    headers.set("Content-Range", object.ContentRange);
+  if (contentRange) {
+    headers.set("Content-Range", contentRange);
   }
 
-  return new Response(object.Body.transformToWebStream(), {
-    status: object.ContentRange ? 206 : 200,
+  return new Response(body, {
+    status:
+      asset.provider === "CLOUDINARY"
+        ? object.status
+        : object.ContentRange
+          ? 206
+          : 200,
     headers,
   });
 }

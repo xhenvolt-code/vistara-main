@@ -66,7 +66,7 @@ export default async function MovieWorkspacePage({ params }) {
   const readyAsset = movie.videoAssets.find(
     (asset) =>
       asset.status === "READY" &&
-      asset.provider === "NEON_OBJECT_STORAGE" &&
+      ["CLOUDINARY", "NEON_OBJECT_STORAGE"].includes(asset.provider) &&
       asset.contentType === "video/mp4" &&
       asset.fileSizeBytes !== null,
   );
@@ -131,8 +131,8 @@ export default async function MovieWorkspacePage({ params }) {
         <section className="admin-panel" id="video-upload">
           <h2>{readyAsset ? "Replace movie video" : "Upload movie video"}</h2>
           <p className="muted">
-            Select an MP4 file up to 5 GiB. It uploads directly to Neon Object
-            Storage, then Vistara verifies it before making it available.
+            Select an MP4 file up to 5 GiB. It uploads directly to Cloudinary,
+            then Vistara verifies it before making it available.
           </p>
           <VideoUploadPanel movieId={movie.id} />
         </section>
@@ -150,7 +150,7 @@ export default async function MovieWorkspacePage({ params }) {
         ) : (
           <p className="muted">
             Playback preview becomes available after an MP4 upload is completed
-            and verified in object storage.
+            and verified in Cloudinary.
           </p>
         )}
       </section>

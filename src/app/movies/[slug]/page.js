@@ -17,7 +17,7 @@ async function MovieDetails({ params }) {
       videoAssets: {
         some: {
           status: "READY",
-          provider: "NEON_OBJECT_STORAGE",
+          provider: { in: ["CLOUDINARY", "NEON_OBJECT_STORAGE"] },
           contentType: "video/mp4",
           fileSizeBytes: { not: null },
         },
@@ -28,7 +28,7 @@ async function MovieDetails({ params }) {
       videoAssets: {
         where: {
           status: "READY",
-          provider: "NEON_OBJECT_STORAGE",
+          provider: { in: ["CLOUDINARY", "NEON_OBJECT_STORAGE"] },
           contentType: "video/mp4",
           fileSizeBytes: { not: null },
         },
@@ -56,8 +56,7 @@ async function MovieDetails({ params }) {
   const videoAsset = movie.videoAssets[0];
   const canPlayVideo =
     authorization.allowed &&
-    videoAsset?.provider === "NEON_OBJECT_STORAGE" &&
-    videoAsset.providerAssetId.toLowerCase().endsWith(".mp4");
+    ["CLOUDINARY", "NEON_OBJECT_STORAGE"].includes(videoAsset?.provider);
 
   return (
     <main className="page-wrap section">
@@ -123,7 +122,7 @@ async function MovieDetails({ params }) {
               : authorization.reason === "account_suspended"
                 ? "This account cannot play videos. Contact Vistara support if you think this is a mistake."
                 : authorization.allowed
-                  ? "This title does not yet have a supported MP4 streaming asset."
+                  ? "This title does not yet have a verified MP4 streaming asset."
                   : "An active Vistara access pass is required to watch this title."}
           </span>
         </div>

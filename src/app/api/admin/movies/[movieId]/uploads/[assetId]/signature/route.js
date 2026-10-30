@@ -1,0 +1,53 @@
+import { getAdminAccess } from "@/server/auth/admin";
+import { prisma } from "@/server/db/prisma";
+import { createCloudinaryVideoUpload } from "@/server/storage/cloudinary-video";
+
+function isSameOrigin(request) {
+  const appBaseUrl = process.env.APP_BASE_URL;
+  const origin = request.headers.get("origin");
+
+  return Boolean(appBaseUrl && origin && new URL(appBaseUrl).origin === origin);
+}
+
+export async function POST(request, { params }) {
+  if (!isSameOrigin(request)) {
+    return Response.json({ error: "Invalid request origin." }, { status: 403 });
+  }
+
+  const access = await getAdminAccess();
+
+  if (access.status !== "authorized") {
+    return Response.json({ error: "Administrator access is required." }, { status: 403 });
+  }
+
+  const { movieId, assetId } = await params;
+  const asset = await prisma.videoAsset.findFirst({
+    where: {
+      id: assetId,
+      movieId,
+      provider: "CLOUDINARY",
+      status: "UPLOADING",
+    },
+    select: { id: true, providerAssetId: true },
+  });
+
+  if (!asset) {
+    return Response.json({ error: "This upload is no longer active." }, { status: 404 });
+  }
+
+  try {
+    return Response.json(createCloudinaryVideoUpload(asset.providerAssetId), {
+      headers: { "Cache-Control": "no-store" },
+    });
+  } catch (error) {
+    console.error("Could not sign a Cloudinary video upload chunk.", {
+      movieId,
+      assetId,
+      message: error instanceof Error ? error.message : "Unknown Cloudinary error",
+    });
+    return Response.json(
+      { error: "Cloudinary could not authorize this upload. Check its configuration and retry." },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+}

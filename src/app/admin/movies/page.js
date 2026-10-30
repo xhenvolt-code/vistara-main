@@ -114,8 +114,8 @@ export default async function MovieLibraryPage({ searchParams }) {
 
       <p className="muted admin-intro">
         Review movie artwork, metadata, publishing, and verified video
-        readiness in one library. Only uploaded and storage-verified videos can
-        be marked ready.
+        readiness in one library. Only videos verified with their storage
+        provider can be marked ready.
       </p>
 
       <form action="/admin/movies" className="movie-library-filters">

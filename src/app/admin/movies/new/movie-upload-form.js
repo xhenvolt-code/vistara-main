@@ -184,7 +184,8 @@ export function MovieUploadForm() {
       <p className="muted video-upload-disclaimer">
         Title and MP4 are the only required fields. You can add artwork, synopsis,
         cast, rights information, and other details from the movie workspace.
-        MP4 uploads are limited to 5 GiB and are not transcoded.
+        MP4 files can be up to 5 GiB, subject to your Cloudinary account&apos;s
+        upload limits. Videos are not transcoded.
       </p>
     </div>
   );

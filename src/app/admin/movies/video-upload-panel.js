@@ -110,9 +110,9 @@ export function VideoUploadPanel({ movieId }) {
         {status === "uploading" ? "Uploading..." : "Upload movie video"}
       </button>
       <p className="muted video-upload-disclaimer">
-        Uploads go directly from this browser to the configured Neon Object
-        Storage bucket. This workflow supports MP4 files up to 5 GiB; it does
-        not transcode or create adaptive streaming versions.
+        Uploads go directly from this browser to Cloudinary in chunks. The app
+        allows MP4 files up to 5 GiB, subject to your Cloudinary
+        account&apos;s limits. Videos are not transcoded.
       </p>
     </form>
   );

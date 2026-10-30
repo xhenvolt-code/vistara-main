@@ -3,7 +3,7 @@ import { z } from "zod";
 import { MAX_VIDEO_UPLOAD_BYTES } from "@/domain/video-playback";
 import { getAdminAccess } from "@/server/auth/admin";
 import { prisma } from "@/server/db/prisma";
-import { createNeonVideoUpload } from "@/server/storage/neon-object-storage";
+import { createCloudinaryVideoUpload } from "@/server/storage/cloudinary-video";
 
 const uploadSchema = z.object({
   filename: z.string().trim().min(1).max(240),
@@ -63,15 +63,15 @@ export async function POST(request, { params }) {
     return Response.json({ error: "This movie cannot receive a video upload." }, { status: 404 });
   }
 
-  const key = `movies/${movie.id}/${randomUUID()}.mp4`;
+  const publicId = `vistara/movies/${movie.id}/${randomUUID()}`;
   let asset;
 
   try {
     asset = await prisma.videoAsset.create({
       data: {
         movieId: movie.id,
-        provider: "NEON_OBJECT_STORAGE",
-        providerAssetId: key,
+        provider: "CLOUDINARY",
+        providerAssetId: publicId,
         status: "UPLOADING",
         originalFilename: parsed.data.filename.split(/[\\/]/).pop(),
         contentType: "video/mp4",
@@ -96,7 +96,7 @@ export async function POST(request, { params }) {
   }
 
   try {
-    const upload = await createNeonVideoUpload(key, parsed.data.fileSizeBytes);
+    const upload = createCloudinaryVideoUpload(publicId);
     await prisma.auditLog.create({
       data: {
         actorId: access.userId,
@@ -115,8 +115,11 @@ export async function POST(request, { params }) {
       {
         assetId: asset.id,
         uploadUrl: upload.uploadUrl,
-        expiresInSeconds: upload.expiresInSeconds,
-        headers: { "Content-Type": "video/mp4" },
+        apiKey: upload.apiKey,
+        timestamp: upload.timestamp,
+        signature: upload.signature,
+        publicId: upload.publicId,
+        type: upload.type,
       },
       { status: 201, headers: { "Cache-Control": "no-store" } },
     );
@@ -132,7 +135,7 @@ export async function POST(request, { params }) {
     });
 
     return Response.json(
-      { error: "Video upload could not be started. Check storage configuration and try again." },
+      { error: "Video upload could not be started. Check Cloudinary configuration and try again." },
       { status: 503, headers: { "Cache-Control": "no-store" } },
     );
   }

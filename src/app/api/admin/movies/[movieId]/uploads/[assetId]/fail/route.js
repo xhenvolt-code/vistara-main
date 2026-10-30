@@ -1,6 +1,6 @@
 import { getAdminAccess } from "@/server/auth/admin";
 import { prisma } from "@/server/db/prisma";
-import { deleteNeonUploadObject } from "@/server/storage/neon-object-storage";
+import { deleteCloudinaryVideoAsset } from "@/server/storage/cloudinary-video";
 
 function isSameOrigin(request) {
   const appBaseUrl = process.env.APP_BASE_URL;
@@ -25,7 +25,7 @@ export async function POST(request, { params }) {
     where: {
       id: assetId,
       movieId,
-      provider: "NEON_OBJECT_STORAGE",
+      provider: "CLOUDINARY",
       status: { in: ["UPLOADING", "UPLOAD_FAILED"] },
     },
     select: { id: true, providerAssetId: true, status: true },
@@ -47,7 +47,7 @@ export async function POST(request, { params }) {
   }
 
   try {
-    await deleteNeonUploadObject(asset.providerAssetId);
+    await deleteCloudinaryVideoAsset(asset.providerAssetId);
   } catch (error) {
     console.error("Could not clean up failed movie video upload.", {
       movieId,
@@ -55,7 +55,7 @@ export async function POST(request, { params }) {
       message: error instanceof Error ? error.message : "Unknown storage error",
     });
     return Response.json(
-      { error: "Upload marked failed, but its storage object could not be removed." },
+      { error: "Upload marked failed, but its Cloudinary asset could not be removed." },
       { status: 502 },
     );
   }

@@ -1,6 +1,7 @@
 import { getAdminAccess } from "@/server/auth/admin";
 import { isValidByteRange } from "@/domain/video-playback";
 import { prisma } from "@/server/db/prisma";
+import { fetchCloudinaryVideo } from "@/server/storage/cloudinary-video";
 import { getNeonVideoObject } from "@/server/storage/neon-object-storage";
 
 export async function GET(request, { params }) {
@@ -17,13 +18,13 @@ export async function GET(request, { params }) {
   const asset = await prisma.videoAsset.findFirst({
     where: {
       movieId,
-      provider: "NEON_OBJECT_STORAGE",
+      provider: { in: ["CLOUDINARY", "NEON_OBJECT_STORAGE"] },
       status: "READY",
       contentType: "video/mp4",
       fileSizeBytes: { not: null },
     },
     orderBy: { updatedAt: "desc" },
-    select: { providerAssetId: true, contentType: true },
+    select: { provider: true, providerAssetId: true, contentType: true },
   });
 
   if (!asset) {
@@ -48,7 +49,10 @@ export async function GET(request, { params }) {
   let object;
 
   try {
-    object = await getNeonVideoObject(asset.providerAssetId, range ?? undefined);
+    object =
+      asset.provider === "CLOUDINARY"
+        ? await fetchCloudinaryVideo(asset.providerAssetId, range ?? undefined)
+        : await getNeonVideoObject(asset.providerAssetId, range ?? undefined);
   } catch (error) {
     console.error("Admin video preview failed to load from storage.", {
       movieId,
@@ -60,7 +64,33 @@ export async function GET(request, { params }) {
     );
   }
 
-  if (!object.Body) {
+  if (asset.provider === "CLOUDINARY" && object.status === 416) {
+    const headers = new Headers({
+      "Accept-Ranges": "bytes",
+      "Cache-Control": "private, no-store",
+    });
+    const contentRange = object.headers.get("content-range");
+    if (contentRange) {
+      headers.set("Content-Range", contentRange);
+    }
+    return new Response(null, { status: 416, headers });
+  }
+
+  const body =
+    asset.provider === "CLOUDINARY" ? object.body : object.Body?.transformToWebStream();
+
+  if (!object.ok && asset.provider === "CLOUDINARY") {
+    console.error("Admin video preview failed to load from Cloudinary.", {
+      movieId,
+      status: object.status,
+    });
+    return Response.json(
+      { error: "The video could not be loaded. Please try again later." },
+      { status: 502, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  if (!body) {
     return Response.json(
       { error: "Storage returned no video data." },
       { status: 502, headers: { "Cache-Control": "no-store" } },
@@ -74,15 +104,29 @@ export async function GET(request, { params }) {
     "X-Content-Type-Options": "nosniff",
   });
 
-  if (object.ContentLength !== undefined) {
-    headers.set("Content-Length", String(object.ContentLength));
+  const contentLength =
+    asset.provider === "CLOUDINARY"
+      ? object.headers.get("content-length")
+      : object.ContentLength;
+  const contentRange =
+    asset.provider === "CLOUDINARY"
+      ? object.headers.get("content-range")
+      : object.ContentRange;
+
+  if (contentLength !== undefined && contentLength !== null) {
+    headers.set("Content-Length", String(contentLength));
   }
-  if (object.ContentRange) {
-    headers.set("Content-Range", object.ContentRange);
+  if (contentRange) {
+    headers.set("Content-Range", contentRange);
   }
 
-  return new Response(object.Body.transformToWebStream(), {
-    status: object.ContentRange ? 206 : 200,
+  return new Response(body, {
+    status:
+      asset.provider === "CLOUDINARY"
+        ? object.status
+        : object.ContentRange
+          ? 206
+          : 200,
     headers,
   });
 }
