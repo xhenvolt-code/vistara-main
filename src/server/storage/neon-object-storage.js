@@ -1,10 +1,19 @@
 import "server-only";
 import {
+  DeleteObjectCommand,
+  HeadObjectCommand,
+  GetObjectCommand,
   ListBucketsCommand,
   ListObjectsV2Command,
+  PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { prisma } from "@/server/db/prisma";
+import {
+  isSafeArtworkObjectKey,
+  isSafeMp4ObjectKey,
+} from "@/domain/video-playback";
 
 let client;
 
@@ -36,6 +45,150 @@ function getClient() {
   });
 
   return client;
+}
+
+export async function getNeonVideoObject(key, range) {
+  const bucketName = process.env.STORAGE_BUCKET;
+
+  if (!bucketName) {
+    throw new Error("STORAGE_BUCKET is required for video playback.");
+  }
+
+  if (!isSafeMp4ObjectKey(key)) {
+    throw new Error("The video asset must be a relative MP4 object key.");
+  }
+
+  return getClient().send(
+    new GetObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+      Range: range,
+    }),
+  );
+}
+
+export async function createNeonVideoUpload(key, fileSizeBytes) {
+  const bucketName = process.env.STORAGE_BUCKET;
+
+  if (!bucketName) {
+    throw new Error("STORAGE_BUCKET is required for video uploads.");
+  }
+  if (!isSafeMp4ObjectKey(key)) {
+    throw new Error("The video asset must be a relative MP4 object key.");
+  }
+  if (!Number.isSafeInteger(fileSizeBytes) || fileSizeBytes <= 0) {
+    throw new Error("The video upload size must be a positive safe integer.");
+  }
+
+  const uploadUrl = await getSignedUrl(
+    getClient(),
+    new PutObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+      ContentType: "video/mp4",
+    }),
+    { expiresIn: 900 },
+  );
+
+  return { uploadUrl, expiresInSeconds: 900 };
+}
+
+export async function verifyNeonVideoUpload(key) {
+  const bucketName = process.env.STORAGE_BUCKET;
+
+  if (!bucketName) {
+    throw new Error("STORAGE_BUCKET is required for video uploads.");
+  }
+  if (!isSafeMp4ObjectKey(key)) {
+    throw new Error("The video asset must be a relative MP4 object key.");
+  }
+
+  return getClient().send(
+    new HeadObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    }),
+  );
+}
+
+export async function createNeonArtworkUpload(key, contentType) {
+  const bucketName = process.env.STORAGE_BUCKET;
+
+  if (!bucketName) {
+    throw new Error("STORAGE_BUCKET is required for artwork uploads.");
+  }
+  if (!isSafeArtworkObjectKey(key)) {
+    throw new Error("The artwork must use a supported movie artwork object key.");
+  }
+  if (!["image/jpeg", "image/png", "image/webp"].includes(contentType)) {
+    throw new Error("Artwork must be JPEG, PNG, or WebP.");
+  }
+
+  const uploadUrl = await getSignedUrl(
+    getClient(),
+    new PutObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+      ContentType: contentType,
+    }),
+    { expiresIn: 600 },
+  );
+
+  return { uploadUrl, expiresInSeconds: 600 };
+}
+
+export async function verifyNeonArtworkUpload(key) {
+  const bucketName = process.env.STORAGE_BUCKET;
+
+  if (!bucketName) {
+    throw new Error("STORAGE_BUCKET is required for artwork uploads.");
+  }
+  if (!isSafeArtworkObjectKey(key)) {
+    throw new Error("The artwork must use a supported movie artwork object key.");
+  }
+
+  return getClient().send(
+    new HeadObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    }),
+  );
+}
+
+export async function getNeonArtworkObject(key) {
+  const bucketName = process.env.STORAGE_BUCKET;
+
+  if (!bucketName) {
+    throw new Error("STORAGE_BUCKET is required for artwork delivery.");
+  }
+  if (!isSafeArtworkObjectKey(key)) {
+    throw new Error("The artwork must use a supported movie artwork object key.");
+  }
+
+  return getClient().send(
+    new GetObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    }),
+  );
+}
+
+export async function deleteNeonUploadObject(key) {
+  const bucketName = process.env.STORAGE_BUCKET;
+
+  if (!bucketName) {
+    throw new Error("STORAGE_BUCKET is required for upload cleanup.");
+  }
+  if (!isSafeMp4ObjectKey(key) && !isSafeArtworkObjectKey(key)) {
+    throw new Error("The object key is not a Vistara movie upload.");
+  }
+
+  await getClient().send(
+    new DeleteObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    }),
+  );
 }
 
 async function getBucketUsage(s3, bucketName) {

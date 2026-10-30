@@ -12,13 +12,21 @@ export async function authorizePlayback(userId, movieId) {
         id: movieId,
         status: "PUBLISHED",
         rightsStatus: "APPROVED",
-        videoAssets: { some: { status: "READY" } },
+        videoAssets: {
+          some: {
+            status: "READY",
+            provider: "NEON_OBJECT_STORAGE",
+            contentType: "video/mp4",
+            fileSizeBytes: { not: null },
+          },
+        },
       },
       select: { id: true },
     }),
     prisma.entitlement.findFirst({
       where: {
         userId,
+        startsAt: { lte: new Date() },
         revokedAt: null,
         expiresAt: { gt: new Date() },
         purchase: { status: "PAID" },

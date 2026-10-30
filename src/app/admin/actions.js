@@ -57,20 +57,26 @@ const movieSchema = z.object({
   title: z.string().min(2).max(160),
   slug: z.string().min(2).max(180),
   synopsis: z.string().max(5000),
+  director: z.string().max(160),
+  cast: z.array(z.string().min(1).max(100)).max(30),
+  contentRating: z.string().max(30),
   releaseYear: z.number().int().min(1888).max(2200).optional(),
   runtimeMinutes: z.number().int().min(1).max(1000).optional(),
   language: z.string().max(80),
-  posterUrl: z.union([z.literal(""), z.string().url().max(2048)]),
-  backdropUrl: z.union([z.literal(""), z.string().url().max(2048)]),
+  posterUrl: z.union([
+    z.literal(""),
+    z.string().url().max(2048),
+    z.string().regex(/^\/api\/media\/artwork\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(?:jpg|png|webp)$/i),
+  ]),
+  backdropUrl: z.union([
+    z.literal(""),
+    z.string().url().max(2048),
+    z.string().regex(/^\/api\/media\/artwork\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(?:jpg|png|webp)$/i),
+  ]),
   status: z.enum(["DRAFT", "PUBLISHED", "UNPUBLISHED", "ARCHIVED"]),
   rightsStatus: z.enum(["PENDING", "APPROVED", "REJECTED"]),
   rightsSource: z.string().max(500),
   genres: z.array(z.string().min(1).max(60)).max(12),
-  videoAssetId: z.string().max(100),
-  videoProvider: z.enum(["", "CLOUDINARY", "NEON_OBJECT_STORAGE"]),
-  providerAssetId: z.string().max(500),
-  playbackProfile: z.string().max(200),
-  videoStatus: z.enum(["PROCESSING", "READY", "UNAVAILABLE"]),
 });
 
 export async function saveMovie(_previousState, formData) {
@@ -85,11 +91,22 @@ export async function saveMovie(_previousState, formData) {
         .filter(Boolean),
     ),
   ];
+  const castNames = [
+    ...new Set(
+      formString(formData, "cast")
+        .split(",")
+        .map((person) => person.trim())
+        .filter(Boolean),
+    ),
+  ];
   const parsed = movieSchema.safeParse({
     id: formString(formData, "id"),
     title,
     slug: slugify(requestedSlug || title),
     synopsis: formString(formData, "synopsis"),
+    director: formString(formData, "director"),
+    cast: castNames,
+    contentRating: formString(formData, "contentRating"),
     releaseYear: optionalInteger(formString(formData, "releaseYear"), 1888, 2200),
     runtimeMinutes: optionalInteger(
       formString(formData, "runtimeMinutes"),
@@ -103,11 +120,6 @@ export async function saveMovie(_previousState, formData) {
     rightsStatus: formString(formData, "rightsStatus"),
     rightsSource: formString(formData, "rightsSource"),
     genres: genreNames,
-    videoAssetId: formString(formData, "videoAssetId"),
-    videoProvider: formString(formData, "videoProvider"),
-    providerAssetId: formString(formData, "providerAssetId"),
-    playbackProfile: formString(formData, "playbackProfile"),
-    videoStatus: formString(formData, "videoStatus") || "PROCESSING",
   });
 
   if (!parsed.success) {
@@ -126,34 +138,32 @@ export async function saveMovie(_previousState, formData) {
     return { error: "Record the rights source before approving distribution." };
   }
 
-  const hasVideoAsset = Boolean(data.videoProvider && data.providerAssetId);
-
-  if (Boolean(data.videoProvider) !== Boolean(data.providerAssetId)) {
+  if (
+    data.status === "PUBLISHED" &&
+    (data.rightsStatus !== "APPROVED" || !data.rightsSource || !data.id)
+  ) {
     return {
-      error: "Choose both a video provider and its asset ID, or leave both blank.",
+      error:
+        "A movie needs approved rights, a recorded rights source, and a verified uploaded video before publishing.",
     };
   }
 
   if (data.status === "PUBLISHED") {
-    const existingReadyAsset = data.videoAssetId && !hasVideoAsset
-      ? await prisma.videoAsset.findFirst({
-          where: {
-            id: data.videoAssetId,
-            movieId: data.id || undefined,
-            status: "READY",
-          },
-          select: { id: true },
-        })
-      : null;
+    const readyAsset = await prisma.videoAsset.findFirst({
+      where: {
+        movieId: data.id,
+        status: "READY",
+        provider: "NEON_OBJECT_STORAGE",
+        contentType: "video/mp4",
+        fileSizeBytes: { not: null },
+      },
+      select: { id: true },
+    });
 
-    if (
-      data.rightsStatus !== "APPROVED" ||
-      !data.rightsSource ||
-      !(hasVideoAsset ? data.videoStatus === "READY" : existingReadyAsset)
-    ) {
+    if (!readyAsset) {
       return {
         error:
-          "A movie needs approved rights, a recorded rights source, and a ready video asset before publishing.",
+          "Upload and verify a video in this movie's workspace before publishing.",
       };
     }
   }
@@ -173,10 +183,31 @@ export async function saveMovie(_previousState, formData) {
             },
           })
         : null;
+      if (data.status === "PUBLISHED") {
+        const readyAsset = await tx.videoAsset.findFirst({
+          where: {
+            movieId: data.id,
+            status: "READY",
+            provider: "NEON_OBJECT_STORAGE",
+            contentType: "video/mp4",
+            fileSizeBytes: { not: null },
+          },
+          select: { id: true },
+        });
+
+        if (!readyAsset) {
+          throw new Error(
+            "A movie needs a verified uploaded video before it can be published.",
+          );
+        }
+      }
       const movieData = {
         title: data.title,
         slug: data.slug,
         synopsis: data.synopsis || null,
+        director: data.director || null,
+        cast: data.cast,
+        contentRating: data.contentRating || null,
         releaseYear: data.releaseYear,
         runtimeMinutes: data.runtimeMinutes,
         language: data.language || null,
@@ -225,39 +256,6 @@ export async function saveMovie(_previousState, formData) {
         });
       }
 
-      if (hasVideoAsset) {
-        if (data.videoAssetId) {
-          const existingAsset = await tx.videoAsset.findFirst({
-            where: { id: data.videoAssetId, movieId: movie.id },
-            select: { id: true },
-          });
-
-          if (!existingAsset) {
-            throw new Error("The selected video asset does not belong to this title.");
-          }
-
-          await tx.videoAsset.update({
-            where: { id: data.videoAssetId },
-            data: {
-              provider: data.videoProvider,
-              providerAssetId: data.providerAssetId,
-              playbackProfile: data.playbackProfile || null,
-              status: data.videoStatus,
-            },
-          });
-        } else {
-          await tx.videoAsset.create({
-            data: {
-              movieId: movie.id,
-              provider: data.videoProvider,
-              providerAssetId: data.providerAssetId,
-              playbackProfile: data.playbackProfile || null,
-              status: data.videoStatus,
-            },
-          });
-        }
-      }
-
       await tx.auditLog.create({
         data: {
           actorId: access.userId,
@@ -268,6 +266,7 @@ export async function saveMovie(_previousState, formData) {
             status: data.status,
             rightsStatus: data.rightsStatus,
             genreCount: data.genres.length,
+            castCount: data.cast.length,
           },
         },
       });
@@ -277,12 +276,21 @@ export async function saveMovie(_previousState, formData) {
 
     revalidatePath("/admin");
     revalidatePath("/admin/catalogue");
+    revalidatePath("/admin/movies");
+    revalidatePath(`/admin/movies/${movieId}`);
     revalidatePath("/movies");
     revalidatePath(`/movies/${data.slug}`);
     return { success: `Saved ${data.title}.`, movieId };
   } catch (error) {
     if (error?.code === "P2002" || error?.code === "P2025") {
       return { error: prismaMessage(error, "Unable to save this movie.") };
+    }
+    if (
+      error instanceof Error &&
+      error.message ===
+        "A movie needs a verified uploaded video before it can be published."
+    ) {
+      return { error: error.message };
     }
 
     console.error("Admin movie save failed.", {

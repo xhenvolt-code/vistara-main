@@ -17,13 +17,13 @@ intended environment.
 
 | Area | Implemented in this repository | Operational status |
 | --- | --- | --- |
-| Customer application | Responsive homepage, discovery, movie detail, passes, sign-in/sign-up and reset screens | Catalogue uses sample artwork; only publish content with documented rights |
+| Customer application | Responsive homepage, discovery, movie detail, passes, sign-in/sign-up and reset screens | Catalogue is database-backed; only publish content with documented rights and a verified supported video |
 | Authentication | Neon email auth, Google OAuth callback, profile synchronization, admin allowlists | Verify OAuth, cookies, reset, and account lifecycle on the deployed domain |
-| Administration | Overview, catalogue/rights, products, purchase records, users, storage, audit, settings, and revenue-share screens | Server-side authorization is present; review production permissions and migration readiness |
+| Administration | Overview, movie library/search/filtering, metadata, poster/backdrop uploads, direct MP4 upload, movie preview/playback, rights, products, payments, users, storage, audit, and revenue-share screens | Server-side authorization is present; apply the new additive media migration and verify bucket CORS/provider behavior before use |
 | Payments | MarzPay Uganda collection API helper, callback verification, idempotent reconciliation, and entitlement creation | No live collection or settlement has been certified; the passes page currently says checkout is not enabled |
 | Revenue governance | Admin allocations from future verified gross collections, reinvestment preferences, audited payout requests, independent superadmin review | Internal accounting only; no legal equity, provider balance, or automated MarzPay payout |
-| Object storage | S3-compatible Neon Object Storage bucket inventory | Upload pipeline and enforced quota are not implemented; dashboard usage is not Neon billing |
-| Video | Catalogue asset references and readiness fields | Ingestion, processing, protected playback delivery, and playback entitlement enforcement are not implemented |
+| Object storage | S3-compatible Neon Object Storage inventory, short-lived signed direct uploads for movie MP4s and artwork, and upload-completion object verification | Multipart/resumable upload and enforced storage quota are not implemented; dashboard usage is not Neon billing |
+| Video | Admin MP4 upload and preview, plus entitlement-checked MP4 byte-range playback from Neon Object Storage | Transcoding, adaptive HLS/DASH, captions, CDN delivery, Cloudinary playback, upload resume, and production streaming performance are not implemented or certified |
 | Mobile API | Catalogue, available products, and authenticated profile/entitlement/purchase endpoints | Integrate and validate against the intended client before release |
 
 ## Technology
@@ -77,11 +77,10 @@ does not change the device's system theme.
 
 6. Open `http://localhost:3000`.
 
-The public homepage currently references local Fliqs template artwork under
-`public/fliqs/movies`. Those images are excluded from Git until their
-redistribution rights are verified. A fresh clone therefore needs replacement
-artwork or removal/replacement of the demo references before that homepage is
-visually complete.
+Movie posters and backdrops can be uploaded from the authorized movie
+workspace. The movie metadata record must be saved before artwork can be
+uploaded; save the movie again after upload to associate the image with that
+record. Do not use artwork unless its distribution rights are cleared.
 
 ## Environment configuration
 
@@ -93,7 +92,7 @@ Use `.env.example` as the variable-name reference. Do not commit `.env.local`.
 | `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET` | Neon Managed Auth endpoint and signed session-cookie secret |
 | `APP_BASE_URL` | Canonical application origin used to construct auth callback links |
 | `ADMIN_EMAILS`, `SUPERADMIN_EMAILS` | Server-side administrator and superadministrator allowlists |
-| `AWS_ENDPOINT_URL_S3`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `STORAGE_BUCKET` | S3-compatible Neon Object Storage access |
+| `AWS_ENDPOINT_URL_S3`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `STORAGE_BUCKET` | S3-compatible Neon Object Storage access for inventory, signed uploads, artwork, and MP4 playback |
 | `STORAGE_HARD_LIMIT_BYTES` | Advisory application storage limit; not an enforced Neon quota |
 | `CLOUDINARY_URL` | Cloudinary credential format reserved for media integration |
 | `MARZPAY_API_KEY`, `MARZPAY_API_SECRET`, `MARZPAY_BASE_URL` | MarzPay API configuration |
@@ -159,6 +158,27 @@ this repository.
   Payout requests need independent superadmin review and an externally
   completed transfer reference. The application does not send payouts through
   MarzPay.
+- The current video route streams MP4 objects from the configured S3-compatible
+  bucket and checks the signed-in user's active paid entitlement on each
+  request, including byte-range reads. Ready playback assets must use provider
+  `NEON_OBJECT_STORAGE`, a relative `.mp4` object key, and a completed
+  size/content-type verification. This is a basic
+  application-proxied playback path, not adaptive streaming or a CDN; validate
+  provider range behavior and bandwidth/cost limits before production use.
+- Movie upload sends a short-lived, signed single-part PUT directly from the
+  browser to the configured storage endpoint; video files are limited to 5
+  GiB, and poster/backdrop images to 10 MiB. Configure the storage bucket CORS
+  policy to allow the exact application origin, `PUT`, and the `Content-Type`
+  request header. Verify that the deployed Neon Object Storage endpoint
+  supports signed `PutObject`, `HeadObject`, `DeleteObject`, and ranged
+  `GetObject` operations before enabling this workflow. Multipart/resumable
+  uploads are not implemented; large uploads may need a dedicated media
+  provider.
+- A successfully uploaded MP4 is marked ready after its object size and MIME
+  type are verified. This verifies the uploaded object only; it does not
+  inspect codecs, scan the file, transcode it, or create adaptive renditions.
+  The admin preview and customer player proxy the MP4 through the application,
+  so this is not yet a high-scale streaming architecture.
 - The storage screen reports objects visible to the configured S3-compatible
   bucket/branch. It is not a project-wide Neon billing meter, and the configured
   cap is advisory until uploads enforce it.

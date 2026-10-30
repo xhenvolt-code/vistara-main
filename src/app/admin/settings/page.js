@@ -43,7 +43,7 @@ const integrations = [
   {
     label: "Cloudinary",
     configured: () => Boolean(process.env.CLOUDINARY_URL),
-    detail: "Media provider credentials; upload/playback is not enabled yet",
+    detail: "Credentials present; Cloudinary playback is not supported yet",
   },
 ];
 

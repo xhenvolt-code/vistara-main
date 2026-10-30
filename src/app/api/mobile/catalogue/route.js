@@ -22,7 +22,14 @@ export async function GET(request) {
     where: {
       status: "PUBLISHED",
       rightsStatus: "APPROVED",
-      videoAssets: { some: { status: "READY" } },
+      videoAssets: {
+        some: {
+          status: "READY",
+          provider: "NEON_OBJECT_STORAGE",
+          contentType: "video/mp4",
+          fileSizeBytes: { not: null },
+        },
+      },
       ...(searchConditions ? { OR: searchConditions } : {}),
     },
     orderBy: [{ isFeatured: "desc" }, { publishedAt: "desc" }],
@@ -33,6 +40,9 @@ export async function GET(request) {
       synopsis: true,
       posterUrl: true,
       backdropUrl: true,
+      director: true,
+      cast: true,
+      contentRating: true,
       releaseYear: true,
       runtimeMinutes: true,
       language: true,

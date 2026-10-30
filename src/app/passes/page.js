@@ -17,10 +17,10 @@ async function PassOptions() {
 
   return (
     <main className="page-wrap section">
-      <p className="eyebrow">Simple viewing access</p>
-      <h1 className="page-title">Choose your movie-night pass.</h1>
+      <p className="eyebrow">Access pass previews</p>
+      <h1 className="page-title">Explore viewing passes.</h1>
       <p className="muted">
-        Choose an access pass that works for your movie night.
+        Review the pass options currently planned for Vistara.
       </p>
       {availablePasses.length ? (
         <>
@@ -35,17 +35,21 @@ async function PassOptions() {
                 <p className="pass-price">
                   UGX {pass.priceUgx.toLocaleString("en-UG")}
                 </p>
-                <Link className="button-secondary" href="/auth/sign-in">
-                  Sign in to purchase
-                </Link>
+                <button className="button-secondary" disabled type="button">
+                  Purchases unavailable
+                </button>
               </article>
             ))}
           </div>
           <div className="notice" role="note" style={{ marginTop: 28 }}>
-            <strong>Payments not enabled</strong>
+            <strong>Preview only</strong>
             <span>
-              MarzPay checkout will be enabled when its public HTTPS callback
-              endpoint is configured and verified.
+              Online checkout is not available yet. Prices shown are previews;
+              do not make a payment. You can still{" "}
+              <Link className="text-link" href="/auth/sign-in">
+                sign in to your account
+              </Link>
+              .
             </span>
           </div>
         </>

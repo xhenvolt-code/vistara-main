@@ -1,191 +1,160 @@
 import Image from "next/image";
 import Link from "next/link";
-import { demoCatalogue } from "@/data/demo-catalogue";
+import { Suspense } from "react";
+import { io } from "next/cache";
 import { SiteFooter, SiteHeader } from "@/components/site-shell";
+import { prisma } from "@/server/db/prisma";
+
+async function HomeCatalogue() {
+  await io();
+  const movies = await prisma.movie.findMany({
+    where: {
+      status: "PUBLISHED",
+      rightsStatus: "APPROVED",
+      videoAssets: {
+        some: {
+          status: "READY",
+          provider: "NEON_OBJECT_STORAGE",
+          contentType: "video/mp4",
+          fileSizeBytes: { not: null },
+        },
+      },
+    },
+    take: 10,
+    orderBy: [{ isFeatured: "desc" }, { publishedAt: "desc" }],
+    include: { genres: { include: { genre: true } } },
+  });
+  const featuredMovie = movies.find((movie) => movie.isFeatured) ?? movies[0];
+
+  return (
+    <>
+      <section
+        aria-labelledby="home-title"
+        className={`hero${featuredMovie?.backdropUrl ? " hero-with-artwork" : ""}`}
+      >
+        {featuredMovie?.backdropUrl && (
+          <Image
+            alt=""
+            className="hero-image"
+            fill
+            priority
+            sizes="100vw"
+            src={featuredMovie.backdropUrl}
+            unoptimized
+          />
+        )}
+        <div className="hero-content">
+          <p className="eyebrow">Vistara · Uganda</p>
+          <h1 id="home-title">
+            {featuredMovie
+              ? `Your next story: ${featuredMovie.title}.`
+              : "Find your next story."}
+          </h1>
+          <p className="hero-copy">
+            Discover films selected for Vistara and see what is available
+            before choosing an access pass.
+          </p>
+          <div className="hero-actions">
+            <Link className="button-primary" href="/movies">
+              Explore films
+            </Link>
+            <Link className="button-secondary" href="/passes">
+              View access passes
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="catalogue-title" className="section page-wrap">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Made for movie nights</p>
+            <h2 id="catalogue-title">Available on Vistara</h2>
+            <p>
+              Titles shown here have been approved for listing by the Vistara
+              team.
+            </p>
+          </div>
+          <Link className="text-link" href="/movies">
+            Browse all films
+          </Link>
+        </div>
+
+        {movies.length ? (
+          <div className="movie-grid">
+            {movies.map((movie) => (
+              <Link
+                className="movie-card"
+                href={`/movies/${movie.slug}`}
+                key={movie.id}
+              >
+                <div className="movie-poster">
+                  {movie.posterUrl ? (
+                    <img
+                      alt={`Poster for ${movie.title}`}
+                      src={movie.posterUrl}
+                    />
+                  ) : (
+                    <span className="poster-placeholder">
+                      <span
+                        aria-hidden="true"
+                        className="poster-placeholder-mark"
+                      >
+                        V
+                      </span>
+                      Artwork coming soon
+                    </span>
+                  )}
+                </div>
+                <h3>{movie.title}</h3>
+                <span className="movie-meta">
+                  {movie.releaseYear ?? "Release year TBA"} ·{" "}
+                  {movie.genres.map(({ genre }) => genre.name).join(", ") ||
+                    "Film"}
+                </span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="catalogue-empty-state">
+            <span aria-hidden="true" className="catalogue-empty-icon">
+              V
+            </span>
+            <h3>Our catalogue is taking shape</h3>
+            <p>
+              There are no films listed yet. We will add titles here once the
+              catalogue is ready.
+            </p>
+            <Link className="button-secondary" href="/movies">
+              Check the catalogue
+            </Link>
+          </div>
+        )}
+        <p className="catalogue-availability-note">
+          Protected playback currently supports MP4 titles stored in Neon
+          Object Storage. Online purchases are not available yet; access pass
+          prices, when listed, are for preview only.
+        </p>
+      </section>
+    </>
+  );
+}
 
 export default function Home() {
   return (
     <>
       <SiteHeader />
       <main>
-        <section className="mobile-home">
-          <div className="mobile-welcome">
-            <div className="mobile-avatar" aria-hidden="true">
-              V
+        <Suspense
+          fallback={
+            <div className="home-loading" role="status">
+              <span className="loading-indicator" />
+              <span>Loading the Vistara catalogue…</span>
             </div>
-            <div>
-              <span className="mobile-welcome-label">Welcome to Vistara</span>
-              <h1>Your next story starts here.</h1>
-            </div>
-            <Link
-              aria-label="Search the movie catalogue"
-              className="mobile-search"
-              href="/movies"
-            >
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <circle cx="10.8" cy="10.8" r="6.8" />
-                <path d="m16 16 4.2 4.2" />
-              </svg>
-            </Link>
-          </div>
-
-          <Link
-            className="mobile-feature"
-            href={`/movies/${demoCatalogue[0].id}`}
-          >
-            <Image
-              alt={`Sample artwork for ${demoCatalogue[0].title}`}
-              className="mobile-feature-image"
-              fill
-              priority
-              sizes="100vw"
-              src={demoCatalogue[0].backdrop}
-            />
-            <span className="mobile-feature-shade" />
-            <span className="mobile-feature-content">
-              <span className="mobile-preview-tag">Preview pick</span>
-              <strong>{demoCatalogue[0].title}</strong>
-              <span>
-                {demoCatalogue[0].year} · {demoCatalogue[0].genre}
-              </span>
-              <span className="mobile-feature-cta">View details</span>
-            </span>
-          </Link>
-
-          <section className="mobile-rail-section" aria-label="Featured previews">
-            <div className="mobile-rail-heading">
-              <h2>Featured previews</h2>
-              <Link href="/movies">See all</Link>
-            </div>
-            <div className="mobile-rail">
-              {demoCatalogue.slice(0, 4).map((movie) => (
-                <Link
-                  className="mobile-portrait-card"
-                  href={`/movies/${movie.id}`}
-                  key={movie.id}
-                >
-                  <span className="mobile-portrait-image">
-                    <Image
-                      alt={`Sample artwork for ${movie.title}`}
-                      fill
-                      sizes="38vw"
-                      src={movie.image}
-                    />
-                  </span>
-                  <strong>{movie.title}</strong>
-                  <span>{movie.genre} · Preview</span>
-                </Link>
-              ))}
-            </div>
-          </section>
-
-          <section className="mobile-rail-section" aria-label="More movie previews">
-            <div className="mobile-rail-heading">
-              <h2>Explore the catalogue</h2>
-              <Link href="/movies">Browse</Link>
-            </div>
-            <div className="mobile-rail">
-              {demoCatalogue.slice(1).map((movie) => (
-                <Link
-                  className="mobile-landscape-card"
-                  href={`/movies/${movie.id}`}
-                  key={movie.id}
-                >
-                  <span className="mobile-landscape-image">
-                    <Image
-                      alt={`Sample artwork for ${movie.title}`}
-                      fill
-                      sizes="72vw"
-                      src={movie.backdrop ?? movie.image}
-                    />
-                  </span>
-                  <strong>{movie.title}</strong>
-                  <span>{movie.year} · Sample artwork</span>
-                </Link>
-              ))}
-            </div>
-          </section>
-
-          <p className="mobile-content-note">
-            Sample artwork only. No films are currently available to stream.
-          </p>
-        </section>
-
-        <div className="desktop-home">
-          <section className="hero">
-            <Image
-              alt=""
-              className="hero-image"
-              fill
-              priority
-              sizes="100vw"
-              src={demoCatalogue[0].backdrop}
-            />
-            <div className="hero-content">
-              <p className="eyebrow">A better kind of movie night</p>
-              <h1>Find your next story.</h1>
-              <p className="hero-copy">
-                Explore a growing catalogue of films and choose an access pass
-                that works for you.
-              </p>
-              <div className="hero-actions">
-                <Link className="button-primary" href="/movies">
-                  Explore the catalogue
-                </Link>
-                <Link className="button-secondary" href="/passes">
-                  View access passes
-                </Link>
-              </div>
-            </div>
-          </section>
-
-          <section className="section page-wrap">
-            <div className="notice" role="note">
-              <strong>Preview</strong>
-              <span>
-                The artwork below comes from the supplied Fliqs template and is
-                for layout development only. No production catalogue or playback
-                is connected yet; publish only content with verified streaming
-                rights.
-              </span>
-            </div>
-            <div className="section-heading" style={{ marginTop: 54 }}>
-              <div>
-                <p className="eyebrow">Made for movie nights</p>
-                <h2>Explore what’s on</h2>
-                <p>
-                  Sample artwork only — production titles will come from the
-                  catalogue.
-                </p>
-              </div>
-              <Link className="text-link" href="/movies">
-                Browse all
-              </Link>
-            </div>
-            <div className="movie-grid">
-              {demoCatalogue.map((movie) => (
-                <Link
-                  className="movie-card"
-                  href={`/movies/${movie.id}`}
-                  key={movie.id}
-                >
-                  <div className="movie-poster">
-                    <Image
-                      alt={`Sample artwork for ${movie.title}`}
-                      fill
-                      sizes="(max-width: 560px) 45vw, (max-width: 850px) 30vw, 220px"
-                      src={movie.image}
-                    />
-                  </div>
-                  <h3>{movie.title}</h3>
-                  <span className="movie-meta">
-                    {movie.year} · {movie.genre} · Preview
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        </div>
+          }
+        >
+          <HomeCatalogue />
+        </Suspense>
       </main>
       <SiteFooter />
     </>

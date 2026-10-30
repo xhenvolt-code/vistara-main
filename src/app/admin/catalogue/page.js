@@ -1,10 +1,11 @@
 import { connection } from "next/server";
+import Link from "next/link";
 import { getAdminAccess } from "@/server/auth/admin";
 import { prisma } from "@/server/db/prisma";
 import { AdminAccessNotice, AdminPageHeading } from "../admin-ui";
 import { MovieEditor } from "../admin-forms";
 
-export const metadata = { title: "Catalogue management" };
+export const metadata = { title: "Rights and genres" };
 
 export default async function AdminCataloguePage() {
   await connection();
@@ -24,20 +25,32 @@ export default async function AdminCataloguePage() {
 
   return (
     <>
-      <AdminPageHeading title="Catalogue & distribution rights" />
+      <AdminPageHeading
+        eyebrow="Movie management"
+        title="Rights & genres"
+      >
+        <Link className="button-secondary" href="/admin/movies">
+          Movie library
+        </Link>
+      </AdminPageHeading>
       <p className="muted admin-intro">
-        A title can be published only after rights are approved, the agreement
-        reference is recorded, and a playback asset is marked ready.
+        Record distribution rights and manage genre assignments. Video assets
+        are uploaded and verified from each movie workspace.
       </p>
 
       <section className="admin-panel">
-        <h2>Add a catalogue title</h2>
+        <div className="admin-panel-heading">
+          <h2>Add a movie</h2>
+          <Link className="text-link" href="/admin/movies/new">
+            Open upload workflow
+          </Link>
+        </div>
         <MovieEditor />
       </section>
 
       <section className="admin-panel">
         <div className="admin-panel-heading">
-          <h2>Managed titles</h2>
+          <h2>Movie rights records</h2>
           <span className="admin-role-badge">{movies.length} total</span>
         </div>
         {movies.length ? (
@@ -48,7 +61,7 @@ export default async function AdminCataloguePage() {
                   <span>
                     <strong>{movie.title}</strong>
                     <small>
-                      {movie.slug} · {movie.status} · Rights {movie.rightsStatus}
+                      {movie.slug} · Rights {movie.rightsStatus}
                     </small>
                   </span>
                   {movie.videoAssets[0] ? (
@@ -59,6 +72,11 @@ export default async function AdminCataloguePage() {
                     <span className="status-pill status-pending">No video asset</span>
                   )}
                 </summary>
+                <p className="admin-record-workspace-link">
+                  <Link className="text-link" href={`/admin/movies/${movie.id}`}>
+                    Open movie workspace
+                  </Link>
+                </p>
                 <MovieEditor movie={movie} label="Save changes" />
               </details>
             ))}

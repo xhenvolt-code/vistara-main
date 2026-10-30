@@ -29,7 +29,14 @@ async function MovieResults({ searchParams }) {
     where: {
       status: "PUBLISHED",
       rightsStatus: "APPROVED",
-      videoAssets: { some: { status: "READY" } },
+      videoAssets: {
+        some: {
+          status: "READY",
+          provider: "NEON_OBJECT_STORAGE",
+          contentType: "video/mp4",
+          fileSizeBytes: { not: null },
+        },
+      },
       ...(searchConditions ? { OR: searchConditions } : {}),
     },
     orderBy: [{ isFeatured: "desc" }, { publishedAt: "desc" }],
@@ -97,7 +104,7 @@ async function MovieResults({ searchParams }) {
           <p className="empty-state">
             {query
               ? `No available titles match “${query}”. Try another search.`
-              : "There are no titles available to stream yet."}
+              : "There are no titles in the Vistara catalogue yet."}
           </p>
         )}
       </section>

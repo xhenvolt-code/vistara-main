@@ -1,8 +1,10 @@
+import { connection } from "next/server";
 import { auth } from "@/server/auth/neon";
 import { syncAuthProfile } from "@/server/auth/sync-profile";
 import { prisma } from "@/server/db/prisma";
 
 export async function GET() {
+  await connection();
   const { data: session, error } = await auth.getSession();
 
   if (error) {

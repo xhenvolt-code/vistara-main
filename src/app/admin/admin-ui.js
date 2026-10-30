@@ -3,7 +3,9 @@ import Link from "next/link";
 
 const navigation = [
   { href: "/admin", label: "Overview" },
-  { href: "/admin/catalogue", label: "Catalogue & rights" },
+  { href: "/admin/movies", label: "Movie library" },
+  { href: "/admin/movies/new", label: "Upload movie" },
+  { href: "/admin/catalogue", label: "Rights & genres" },
   { href: "/admin/products", label: "Access products" },
   { href: "/admin/payments", label: "Purchases & payments" },
   { href: "/admin/finance", label: "Revenue shares" },

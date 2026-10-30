@@ -31,7 +31,10 @@ enum VideoProvider {
 }
 
 enum VideoStatus {
+  UPLOADING
+  UPLOAD_FAILED
   PROCESSING
+  PROCESSING_FAILED
   READY
   UNAVAILABLE
 }
@@ -91,6 +94,9 @@ model Movie {
   title            String
   slug             String       @unique
   synopsis         String?      @db.Text
+  director         String?
+  cast             String[]     @default([])
+  contentRating    String?
   posterUrl        String?
   backdropUrl      String?
   releaseYear      Int?
@@ -139,6 +145,9 @@ model VideoAsset {
   playbackProfile String?
   status          VideoStatus   @default(PROCESSING)
   durationSeconds Int?
+  originalFilename String?
+  contentType      String?
+  fileSizeBytes    BigInt?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   movie           Movie         @relation(fields: [movieId], references: [id], onDelete: Restrict)

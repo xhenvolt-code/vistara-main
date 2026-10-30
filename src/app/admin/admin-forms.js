@@ -1,7 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import Link from "next/link";
 import { saveAccessProduct, saveMovie, updateUserStatus } from "./actions";
+import { ArtworkUploadField } from "./movies/artwork-upload-field";
 
 function ActionMessage({ state }) {
   if (state?.error) {
@@ -25,16 +27,12 @@ function ActionMessage({ state }) {
 
 export function MovieEditor({ movie, label = "Add a movie" }) {
   const [state, formAction, isPending] = useActionState(saveMovie, null);
-  const videoAsset = movie?.videoAssets?.[0];
+  const [posterUrl, setPosterUrl] = useState(movie?.posterUrl ?? "");
+  const [backdropUrl, setBackdropUrl] = useState(movie?.backdropUrl ?? "");
 
   return (
     <form action={formAction} className="admin-form">
       <input name="id" type="hidden" value={movie?.id ?? ""} />
-      <input
-        name="videoAssetId"
-        type="hidden"
-        value={videoAsset?.id ?? ""}
-      />
       <div className="admin-form-grid">
         <label>
           Title
@@ -83,6 +81,32 @@ export function MovieEditor({ movie, label = "Add a movie" }) {
           />
         </label>
         <label>
+          Director
+          <input
+            defaultValue={movie?.director ?? ""}
+            maxLength={160}
+            name="director"
+          />
+        </label>
+        <label>
+          Cast (comma-separated)
+          <input
+            defaultValue={movie?.cast?.join(", ") ?? ""}
+            maxLength={3000}
+            name="cast"
+            placeholder="Actor One, Actor Two"
+          />
+        </label>
+        <label>
+          Content rating
+          <input
+            defaultValue={movie?.contentRating ?? ""}
+            maxLength={30}
+            name="contentRating"
+            placeholder="e.g. 16+"
+          />
+        </label>
+        <label>
           Genres (comma-separated)
           <input
             defaultValue={movie?.genres?.map(({ genre }) => genre.name).join(", ") ?? ""}
@@ -90,24 +114,40 @@ export function MovieEditor({ movie, label = "Add a movie" }) {
             placeholder="Drama, Adventure"
           />
         </label>
-        <label>
-          Poster image URL
+        <div className="admin-media-field">
+          <label htmlFor="poster-url">Poster image URL</label>
           <input
-            defaultValue={movie?.posterUrl ?? ""}
+            id="poster-url"
+            onChange={(event) => setPosterUrl(event.target.value)}
+            value={posterUrl}
             name="posterUrl"
             placeholder="https://..."
-            type="url"
+            type="text"
           />
-        </label>
-        <label>
-          Backdrop image URL
+          <ArtworkUploadField
+            currentUrl={posterUrl}
+            movieId={movie?.id}
+            onUploaded={setPosterUrl}
+            purpose="poster"
+          />
+        </div>
+        <div className="admin-media-field">
+          <label htmlFor="backdrop-url">Backdrop image URL</label>
           <input
-            defaultValue={movie?.backdropUrl ?? ""}
+            id="backdrop-url"
+            onChange={(event) => setBackdropUrl(event.target.value)}
+            value={backdropUrl}
             name="backdropUrl"
             placeholder="https://..."
-            type="url"
+            type="text"
           />
-        </label>
+          <ArtworkUploadField
+            currentUrl={backdropUrl}
+            movieId={movie?.id}
+            onUploaded={setBackdropUrl}
+            purpose="backdrop"
+          />
+        </div>
         <label>
           Catalogue status
           <select defaultValue={movie?.status ?? "DRAFT"} name="status">
@@ -149,50 +189,10 @@ export function MovieEditor({ movie, label = "Add a movie" }) {
       </div>
 
       <fieldset className="admin-form-fieldset">
-        <legend>Playback asset</legend>
-        <div className="admin-form-grid">
-          <label>
-            Provider
-            <select
-              defaultValue={videoAsset?.provider ?? ""}
-              name="videoProvider"
-            >
-              <option value="">Not connected</option>
-              <option value="CLOUDINARY">Cloudinary</option>
-              <option value="NEON_OBJECT_STORAGE">Neon Object Storage</option>
-            </select>
-          </label>
-          <label>
-            Provider asset ID
-            <input
-              defaultValue={videoAsset?.providerAssetId ?? ""}
-              maxLength={500}
-              name="providerAssetId"
-            />
-          </label>
-          <label>
-            Playback profile
-            <input
-              defaultValue={videoAsset?.playbackProfile ?? ""}
-              maxLength={200}
-              name="playbackProfile"
-            />
-          </label>
-          <label>
-            Asset status
-            <select
-              defaultValue={videoAsset?.status ?? "PROCESSING"}
-              name="videoStatus"
-            >
-              <option value="PROCESSING">Processing</option>
-              <option value="READY">Ready</option>
-              <option value="UNAVAILABLE">Unavailable</option>
-            </select>
-          </label>
-        </div>
         <p className="muted">
-          Publishing requires approved rights, a rights reference, and a ready
-          playback asset. Confirm distribution rights before publishing.
+          Video assets must be uploaded and verified through the movie
+          workspace. Publishing requires approved distribution rights, a
+          recorded rights reference, and a verified ready video.
         </p>
       </fieldset>
 
@@ -208,6 +208,13 @@ export function MovieEditor({ movie, label = "Add a movie" }) {
         {isPending ? "Saving..." : label}
       </button>
       <ActionMessage state={state} />
+      {state?.movieId && (
+        <p className="form-success">
+          <Link className="text-link" href={`/admin/movies/${state.movieId}`}>
+            Continue to movie workspace
+          </Link>
+        </p>
+      )}
     </form>
   );
 }

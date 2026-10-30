@@ -7,7 +7,9 @@ import { prisma } from "@/server/db/prisma";
 export const metadata = { title: "Admin overview" };
 
 const panels = [
-  { href: "/admin/catalogue", title: "Catalogue & rights", text: "Manage titles, media assets, and distribution clearances." },
+  { href: "/admin/movies", title: "Movie library", text: "Find, review, preview, and publish movies." },
+  { href: "/admin/movies/new", title: "Upload movie", text: "Add movie details and securely upload an MP4 video." },
+  { href: "/admin/catalogue", title: "Rights & genres", text: "Document distribution clearances and organize the catalogue." },
   { href: "/admin/products", title: "Access products", text: "Set pass durations, prices, ordering, and availability." },
   { href: "/admin/payments", title: "Purchases & payments", text: "Review purchase states, MarzPay transactions, and event history." },
   { href: "/admin/finance", title: "Revenue shares", text: "Assign administrator shares, record reinvestment choices, and review payout requests." },
