@@ -5,6 +5,7 @@ import {
   isSafeMp4ObjectKey,
   isValidByteRange,
 } from "../src/domain/video-playback.js";
+import { isValidMovieVideo } from "../src/app/admin/movies/video-upload-client.js";
 
 test("Neon playback accepts relative MP4 object keys", () => {
   assert.equal(isSafeMp4ObjectKey("films/title.mp4"), true);
@@ -46,4 +47,18 @@ test("playback rejects malformed and multipart byte ranges", () => {
   assert.equal(isValidByteRange("items=0-10"), false);
   assert.equal(isValidByteRange("bytes=abc-def"), false);
   assert.equal(isValidByteRange("bytes=0-10,20-30"), false);
+});
+
+test("movie upload accepts MP4 files up to 5 GiB", () => {
+  assert.equal(isValidMovieVideo({ name: "film.mp4", size: 1024 }), true);
+  assert.equal(
+    isValidMovieVideo({ name: "film.MP4", size: 5 * 1024 * 1024 * 1024 }),
+    true,
+  );
+  assert.equal(isValidMovieVideo({ name: "film.mov", size: 1024 }), false);
+  assert.equal(
+    isValidMovieVideo({ name: "film.mp4", size: 5 * 1024 * 1024 * 1024 + 1 }),
+    false,
+  );
+  assert.equal(isValidMovieVideo(null), false);
 });

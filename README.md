@@ -77,10 +77,13 @@ does not change the device's system theme.
 
 6. Open `http://localhost:3000`.
 
-Movie posters and backdrops can be uploaded from the authorized movie
-workspace. The movie metadata record must be saved before artwork can be
-uploaded; save the movie again after upload to associate the image with that
-record. Do not use artwork unless its distribution rights are cleared.
+To add a movie, open **Admin → Upload movie**, choose an MP4, enter its title,
+and select **Create movie and upload MP4**. The video uploads directly to
+storage while the new movie remains a draft. Artwork and other catalogue
+details are optional and can be added later in the movie workspace. The movie
+record must exist before artwork can be uploaded; save changes after uploading
+artwork to associate it with the record. Do not use media unless its
+distribution rights are cleared.
 
 ## Environment configuration
 

@@ -211,7 +211,7 @@ export function MovieEditor({ movie, label = "Add a movie" }) {
       {state?.movieId && (
         <p className="form-success">
           <Link className="text-link" href={`/admin/movies/${state.movieId}`}>
-            Step 2: Continue to the workspace to upload the MP4 video
+            Open the movie workspace to upload its video and finish setup
           </Link>
         </p>
       )}

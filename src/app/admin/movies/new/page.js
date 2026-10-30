@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import { getAdminAccess } from "@/server/auth/admin";
 import { AdminAccessNotice, AdminPageHeading } from "../../admin-ui";
-import { MovieEditor } from "../../admin-forms";
+import { MovieUploadForm } from "./movie-upload-form";
 
 export const metadata = { title: "Add movie" };
 
@@ -15,15 +15,14 @@ export default async function NewMoviePage() {
 
   return (
     <>
-      <AdminPageHeading eyebrow="Movie management · Step 1 of 2" title="Add a movie" />
+      <AdminPageHeading eyebrow="Movie management" title="Upload a movie" />
       <p className="muted admin-intro">
-        Add the movie details and save. You will then continue to Step 2, where
-        you can select and upload the MP4 video. New movies remain drafts until
-        you explicitly publish them.
+        Select the MP4 and enter its title. Vistara creates a draft and begins
+        uploading the video right away; add any other catalogue details later.
       </p>
       <section className="admin-panel">
-        <h2>Step 1: Movie details and artwork</h2>
-        <MovieEditor label="Create movie record" />
+        <h2>Movie video</h2>
+        <MovieUploadForm />
       </section>
     </>
   );

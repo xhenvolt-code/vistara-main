@@ -1505,6 +1505,23 @@ input {
   gap: 14px;
 }
 
+.movie-upload-workflow {
+  display: grid;
+  justify-items: start;
+  gap: 16px;
+}
+
+.movie-upload-workflow > form {
+  width: min(100%, 560px);
+  padding: 0;
+}
+
+.movie-upload-workflow label strong {
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
 .video-upload-picker {
   display: grid;
   gap: 8px;
