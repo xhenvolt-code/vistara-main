@@ -64,18 +64,36 @@ export async function POST(request, { params }) {
   }
 
   const key = `movies/${movie.id}/${randomUUID()}.mp4`;
-  const asset = await prisma.videoAsset.create({
-    data: {
+  let asset;
+
+  try {
+    asset = await prisma.videoAsset.create({
+      data: {
+        movieId: movie.id,
+        provider: "NEON_OBJECT_STORAGE",
+        providerAssetId: key,
+        status: "UPLOADING",
+        originalFilename: parsed.data.filename.split(/[\\/]/).pop(),
+        contentType: "video/mp4",
+        fileSizeBytes: BigInt(parsed.data.fileSizeBytes),
+      },
+      select: { id: true },
+    });
+  } catch (error) {
+    console.error("Could not create a movie video asset.", {
       movieId: movie.id,
-      provider: "NEON_OBJECT_STORAGE",
-      providerAssetId: key,
-      status: "UPLOADING",
-      originalFilename: parsed.data.filename.split(/[\\/]/).pop(),
-      contentType: "video/mp4",
-      fileSizeBytes: BigInt(parsed.data.fileSizeBytes),
-    },
-    select: { id: true },
-  });
+      message: error instanceof Error ? error.message : "Unknown database error",
+    });
+    return Response.json(
+      {
+        error:
+          error?.code === "P2022"
+            ? "The movie database migration is not applied yet. Apply the pending media migration before uploading videos."
+            : "The video upload could not be prepared. Check database connectivity and try again.",
+      },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 
   try {
     const upload = await createNeonVideoUpload(key, parsed.data.fileSizeBytes);

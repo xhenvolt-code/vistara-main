@@ -1511,7 +1511,10 @@ input {
   gap: 16px;
 }
 
-.movie-upload-workflow > form {
+.movie-upload-form {
+  display: grid;
+  justify-items: start;
+  gap: 16px;
   width: min(100%, 560px);
   padding: 0;
 }
