@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { signOut } from "@/app/auth/actions";
 import { auth } from "@/server/auth/neon";
+import { MobileMoreNavigation } from "./mobile-more-navigation";
 
 function FooterCredit() {
   return (
@@ -53,7 +54,7 @@ async function SiteHeaderContent() {
       </Link>
       <nav aria-label="Main navigation" className="site-nav">
         <Link href="/movies">Discover</Link>
-        <Link href="/passes">Access passes</Link>
+        <Link href="/passes">Subscriptions</Link>
         <Link href="/admin">Admin</Link>
       </nav>
       <div className="header-account-actions">
@@ -93,7 +94,7 @@ function SiteHeaderFallback() {
       </Link>
       <nav aria-label="Main navigation" className="site-nav">
         <Link href="/movies">Discover</Link>
-        <Link href="/passes">Access passes</Link>
+        <Link href="/passes">Subscriptions</Link>
         <Link href="/admin">Admin</Link>
       </nav>
     </header>
@@ -143,39 +144,20 @@ async function SiteFooterContent() {
           </svg>
           <span>Discover</span>
         </Link>
-        <Link href="/passes" aria-label="Passes">
+        <Link href="/passes" aria-label="Subscriptions">
           <svg aria-hidden="true" viewBox="0 0 24 24">
             <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H20v16H6.5A2.5 2.5 0 0 1 4 17.5z" />
             <path d="M4 7h16M8 11h8m-8 4h5" />
           </svg>
-          <span>Passes</span>
+          <span>Subscriptions</span>
         </Link>
-        {user ? (
-          <form action={signOut} className="mobile-account-form">
-            <button aria-label="Sign out" type="submit">
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <circle cx="12" cy="8" r="4" />
-                <path d="M4 21a8 8 0 0 1 16 0" />
-              </svg>
-              <span>Sign out</span>
-            </button>
-          </form>
-        ) : (
-          <Link href="/auth/sign-in" aria-label="Account">
-            <svg aria-hidden="true" viewBox="0 0 24 24">
-              <circle cx="12" cy="8" r="4" />
-              <path d="M4 21a8 8 0 0 1 16 0" />
-            </svg>
-            <span>Account</span>
-          </Link>
-        )}
-        <Link href="/admin" aria-label="Administration">
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M12 3 20 6v5c0 5-3.4 8.3-8 10-4.6-1.7-8-5-8-10V6z" />
-            <path d="m9 12 2 2 4-4" />
-          </svg>
-          <span>Admin</span>
-        </Link>
+        <MobileMoreNavigation
+          user={
+            user
+              ? { email: user.email ?? null, name: user.name ?? null }
+              : null
+          }
+        />
       </nav>
     </>
   );
@@ -207,15 +189,10 @@ function SiteFooterFallback() {
         <Link href="/movies" aria-label="Discover">
           <span>Discover</span>
         </Link>
-        <Link href="/passes" aria-label="Passes">
-          <span>Passes</span>
+        <Link href="/passes" aria-label="Subscriptions">
+          <span>Subscriptions</span>
         </Link>
-        <Link href="/auth/sign-in" aria-label="Account">
-          <span>Account</span>
-        </Link>
-        <Link href="/admin" aria-label="Administration">
-          <span>Admin</span>
-        </Link>
+        <MobileMoreNavigation user={null} />
       </nav>
     </>
   );

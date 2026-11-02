@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getAdminAccess } from "@/server/auth/admin";
+import { calculateTemporaryEntitlementWindow } from "@/domain/entitlement-window";
 import { prisma } from "@/server/db/prisma";
 
 function formString(formData, name) {
@@ -335,7 +336,7 @@ export async function saveAccessProduct(_previousState, formData) {
 
   if (!parsed.success) {
     return {
-      error: "Enter a unique name, 1–3650 days, a price of UGX 500–10,000,000, and a valid order.",
+      error: "Enter a unique name, a subscription term of 1–3650 days, a price of UGX 500–10,000,000, and a valid order.",
     };
   }
 
@@ -372,7 +373,7 @@ export async function saveAccessProduct(_previousState, formData) {
     revalidatePath("/admin");
     revalidatePath("/admin/products");
     revalidatePath("/passes");
-    return { success: `Saved ${data.name}.` };
+    return { success: `Saved ${data.name} subscription.` };
   } catch (error) {
     if (error?.code === "P2002" || error?.code === "P2025") {
       return { error: prismaMessage(error, "Unable to save this product.") };
@@ -382,7 +383,100 @@ export async function saveAccessProduct(_previousState, formData) {
       actorId: access.userId,
       message: error instanceof Error ? error.message : "Unknown database error",
     });
-    return { error: "Unable to save this access product. Try again." };
+    return { error: "Unable to save this subscription plan. Try again." };
+  }
+}
+
+const temporarySubscriptionSchema = z.object({
+  userId: z.string().min(1).max(100),
+  durationHours: z.number().int().min(1).max(8760),
+  reason: z.string().trim().min(3).max(500),
+});
+
+export async function grantTemporarySubscription(_previousState, formData) {
+  const access = await requireAdmin();
+  const parsed = temporarySubscriptionSchema.safeParse({
+    userId: formString(formData, "userId"),
+    durationHours: Number(formString(formData, "durationHours")),
+    reason: formString(formData, "reason"),
+  });
+
+  if (!parsed.success) {
+    return {
+      error: "Choose an account, a duration from 1 to 8760 hours, and a reason.",
+    };
+  }
+
+  const target = await prisma.userProfile.findUnique({
+    where: { userId: parsed.data.userId },
+    select: { userId: true, accountStatus: true },
+  });
+
+  if (!target) {
+    return { error: "The selected user profile no longer exists." };
+  }
+
+  if (target.accountStatus !== "ACTIVE") {
+    return { error: "Temporary subscription access cannot be granted to a suspended account." };
+  }
+
+  const now = new Date();
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const currentEntitlement = await tx.entitlement.findFirst({
+        where: {
+          userId: target.userId,
+          expiresAt: { gt: now },
+          revokedAt: null,
+        },
+        orderBy: { expiresAt: "desc" },
+        select: { expiresAt: true },
+      });
+      const { startsAt, expiresAt } = calculateTemporaryEntitlementWindow(
+        now,
+        currentEntitlement?.expiresAt,
+        parsed.data.durationHours,
+      );
+      const entitlement = await tx.entitlement.create({
+        data: {
+          userId: target.userId,
+          startsAt,
+          expiresAt,
+          grantedBy: access.userId,
+          grantReason: parsed.data.reason,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorId: access.userId,
+          action: "subscription.temporary_access.granted",
+          entityType: "Entitlement",
+          entityId: entitlement.id,
+          metadata: {
+            userId: target.userId,
+            durationHours: parsed.data.durationHours,
+            startsAt: startsAt.toISOString(),
+            expiresAt: expiresAt.toISOString(),
+            reason: parsed.data.reason,
+          },
+        },
+      });
+    });
+
+    revalidatePath("/admin/users");
+    revalidatePath("/admin/payments");
+    return {
+      success: `Temporary access granted for ${parsed.data.durationHours} hour${parsed.data.durationHours === 1 ? "" : "s"}.`,
+    };
+  } catch (error) {
+    console.error("Could not grant temporary subscription access.", {
+      actorId: access.userId,
+      userId: target.userId,
+      message: error instanceof Error ? error.message : "Unknown database error",
+    });
+    return { error: "Temporary subscription access could not be granted. Try again." };
   }
 }
 

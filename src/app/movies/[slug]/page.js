@@ -114,7 +114,7 @@ async function MovieDetails({ params }) {
                 ? "Account access is restricted"
                 : authorization.allowed
                   ? "Playback unavailable"
-                  : "An access pass is required"}
+                  : "A subscription is required"}
           </strong>
           <span>
             {!session?.user
@@ -123,7 +123,7 @@ async function MovieDetails({ params }) {
                 ? "This account cannot play videos. Contact Vistara support if you think this is a mistake."
                 : authorization.allowed
                   ? "This title does not yet have a verified video streaming asset."
-                  : "An active Vistara access pass is required to watch this title."}
+                  : "An active Vistara subscription is required to watch this title."}
           </span>
         </div>
       )}
@@ -136,7 +136,7 @@ async function MovieDetails({ params }) {
         !authorization.allowed &&
         authorization.reason !== "account_suspended" && (
           <Link className="button-secondary movie-access-link" href="/passes">
-            View access pass previews
+            View subscription plans
           </Link>
         )}
     </main>

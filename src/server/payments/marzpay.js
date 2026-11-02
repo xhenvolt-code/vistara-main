@@ -26,6 +26,57 @@ const transactionResponseSchema = z.object({
   }),
 });
 
+function getHttpsUrl(value, requiredPath) {
+  const parsedUrl = z.string().url().safeParse(value);
+
+  if (!parsedUrl.success) {
+    return null;
+  }
+
+  const url = new URL(parsedUrl.data);
+  const hostname = url.hostname.toLowerCase();
+
+  if (
+    url.protocol !== "https:" ||
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash ||
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname === "127.0.0.1" ||
+    hostname === "[::1]" ||
+    (requiredPath && url.pathname.replace(/\/$/, "") !== requiredPath)
+  ) {
+    return null;
+  }
+
+  return url;
+}
+
+export function getMarzPayReadiness() {
+  const baseUrl = getHttpsUrl(process.env.MARZPAY_BASE_URL);
+  const callbackUrl = getHttpsUrl(
+    process.env.MARZPAY_CALLBACK_URL,
+    "/api/payments/marzpay/webhook",
+  );
+  const apiConfigured = Boolean(
+    process.env.MARZPAY_API_KEY &&
+      process.env.MARZPAY_API_SECRET &&
+      baseUrl,
+  );
+  const callbackConfigured = Boolean(callbackUrl);
+  const webhookConfigured = Boolean(process.env.MARZPAY_WEBHOOK_SECRET);
+
+  return {
+    apiConfigured,
+    callbackConfigured,
+    webhookConfigured,
+    checkoutReady: apiConfigured && callbackConfigured,
+    callbackUrl: callbackUrl?.toString() ?? null,
+  };
+}
+
 function getConfig() {
   const { MARZPAY_API_KEY, MARZPAY_API_SECRET, MARZPAY_BASE_URL } = process.env;
 
@@ -122,7 +173,7 @@ export async function createUgandaMobileMoneyCollection({
       phone_number: phoneNumber,
       country: "UG",
       reference,
-      description: "Vistara access pass",
+      description: "Vistara subscription",
       callback_url: callbackUrl,
       metadata: [{ purchaseId }],
     }),

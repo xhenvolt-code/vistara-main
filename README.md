@@ -17,10 +17,10 @@ intended environment.
 
 | Area | Implemented in this repository | Operational status |
 | --- | --- | --- |
-| Customer application | Responsive homepage, discovery, movie detail, passes, sign-in/sign-up and reset screens | Catalogue is database-backed; only publish content with documented rights and a verified supported video |
+| Customer application | Responsive homepage, discovery, movie detail, prepaid subscriptions, sign-in/sign-up and reset screens | Catalogue is database-backed; only publish content with documented rights and a verified supported video |
 | Authentication | Neon email auth, Google OAuth callback, profile synchronization, admin allowlists | Verify OAuth, cookies, reset, and account lifecycle on the deployed domain |
-| Administration | Overview, movie library/search/filtering, metadata, poster/backdrop uploads, direct video upload, movie preview/playback, rights, products, payments, users, storage, audit, and revenue-share screens | Server-side authorization is present; verify Cloudinary credentials, account limits, and production playback before use |
-| Payments | MarzPay Uganda collection API helper, callback verification, idempotent reconciliation, and entitlement creation | No live collection or settlement has been certified; the passes page currently says checkout is not enabled |
+| Administration | Overview, movie library/search/filtering, metadata, poster/backdrop uploads, direct video upload, movie preview/playback, rights, subscription plans, temporary user grants, payments, users, storage, audit, and revenue-share screens | Server-side authorization is present; verify Cloudinary credentials, account limits, and production playback before use |
+| Payments | MarzPay Uganda collection API helper, customer checkout and status polling, callback verification, idempotent reconciliation, and entitlement creation | No live collection or settlement has been certified; live checkout requires API credentials and a public HTTPS callback URL |
 | Revenue governance | Admin allocations from future verified gross collections, reinvestment preferences, audited payout requests, independent superadmin review | Internal accounting only; no legal equity, provider balance, or automated MarzPay payout |
 | Object storage | S3-compatible Neon Object Storage inventory and artwork uploads | Movie MP4 video is stored in Cloudinary, not Neon Object Storage |
 | Video | Signed, chunked Cloudinary uploads for common containers; server-side verification; admin preview; entitlement-checked byte-range playback; and on-demand H.264/AAC MP4 delivery for new uploads | Cloudinary plan/transformation limits apply; this does not pre-encode the catalogue, and unsupported/corrupt source codecs may still fail |

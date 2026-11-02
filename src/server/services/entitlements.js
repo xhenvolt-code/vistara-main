@@ -29,7 +29,6 @@ export async function authorizePlayback(userId, movieId) {
         startsAt: { lte: new Date() },
         revokedAt: null,
         expiresAt: { gt: new Date() },
-        purchase: { status: "PAID" },
       },
       orderBy: { expiresAt: "desc" },
       select: { startsAt: true, expiresAt: true },

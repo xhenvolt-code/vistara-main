@@ -2,7 +2,10 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { auth } from "@/server/auth/neon";
 import { prisma } from "@/server/db/prisma";
-import { createUgandaMobileMoneyCollection } from "@/server/payments/marzpay";
+import {
+  createUgandaMobileMoneyCollection,
+  getMarzPayReadiness,
+} from "@/server/payments/marzpay";
 import { syncAuthProfile } from "@/server/auth/sync-profile";
 
 const collectionRequestSchema = z.object({
@@ -21,22 +24,6 @@ function isSameOrigin(request) {
   return new URL(appBaseUrl).origin === origin;
 }
 
-function getCallbackUrl() {
-  const callbackUrl = process.env.MARZPAY_CALLBACK_URL;
-
-  if (!callbackUrl) {
-    throw new Error("MARZPAY_CALLBACK_URL must point to the public webhook endpoint.");
-  }
-
-  const url = new URL(callbackUrl);
-
-  if (url.protocol !== "https:") {
-    throw new Error("MARZPAY_CALLBACK_URL must use HTTPS.");
-  }
-
-  return url.toString();
-}
-
 export async function POST(request) {
   if (!isSameOrigin(request)) {
     return Response.json({ error: "Invalid request origin." }, { status: 403 });
@@ -51,7 +38,7 @@ export async function POST(request) {
   }
 
   if (!session?.user) {
-    return Response.json({ error: "Sign in before purchasing a pass." }, { status: 401 });
+    return Response.json({ error: "Sign in before starting a subscription." }, { status: 401 });
   }
 
   await syncAuthProfile(session.user);
@@ -83,12 +70,11 @@ export async function POST(request) {
 
   if (!parsedBody.success) {
     return Response.json(
-      { error: "Choose a valid access pass and enter a +256 mobile number." },
+      { error: "Choose a valid subscription plan and enter a +256 mobile number." },
       { status: 400 },
     );
   }
 
-  const callbackUrl = getCallbackUrl();
   const existingPurchase = await prisma.purchase.findFirst({
     where: {
       userId: session.user.id,
@@ -105,6 +91,18 @@ export async function POST(request) {
         status: existingPurchase.status,
       },
       { status: 409 },
+    );
+  }
+
+  const marzpayReadiness = getMarzPayReadiness();
+
+  if (!marzpayReadiness.checkoutReady || !marzpayReadiness.callbackUrl) {
+    return Response.json(
+      {
+        error:
+          "MarzPay checkout is not configured. Set the API credentials, HTTPS provider base URL, and public HTTPS MARZPAY_CALLBACK_URL.",
+      },
+      { status: 503 },
     );
   }
 
@@ -126,7 +124,7 @@ export async function POST(request) {
   }
 
   if (!product || !product.isAvailable) {
-    return Response.json({ error: "This access pass is not currently available." }, { status: 404 });
+    return Response.json({ error: "This subscription plan is not currently available." }, { status: 404 });
   }
 
   if (pendingPurchases >= 3) {
@@ -163,7 +161,7 @@ export async function POST(request) {
       amountUgx: purchase.amountUgx,
       phoneNumber: parsedBody.data.phoneNumber,
       reference,
-      callbackUrl,
+      callbackUrl: marzpayReadiness.callbackUrl,
       purchaseId: purchase.id,
     });
 

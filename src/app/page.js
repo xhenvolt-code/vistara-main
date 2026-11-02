@@ -52,14 +52,14 @@ async function HomeCatalogue() {
           </h1>
           <p className="hero-copy">
             Discover films selected for Vistara and see what is available
-            before choosing an access pass.
+            before choosing a subscription.
           </p>
           <div className="hero-actions">
             <Link className="button-primary" href="/movies">
               Explore films
             </Link>
             <Link className="button-secondary" href="/passes">
-              View access passes
+              View subscriptions
             </Link>
           </div>
         </div>
@@ -133,8 +133,8 @@ async function HomeCatalogue() {
         <p className="catalogue-availability-note">
           Cloudinary converts supported uploads to browser-friendly MP4 during
           playback. Neon Object Storage currently serves MP4 originals.
-          Online purchases are not available yet;
-          access pass prices, when listed, are for preview only.
+          Watch subscriptions are prepaid for a fixed term and activate only
+          after payment verification.
         </p>
       </section>
     </>

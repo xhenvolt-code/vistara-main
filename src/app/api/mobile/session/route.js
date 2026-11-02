@@ -34,7 +34,6 @@ export async function GET() {
         startsAt: { lte: now },
         expiresAt: { gt: now },
         revokedAt: null,
-        purchase: { status: "PAID" },
       },
       orderBy: { expiresAt: "desc" },
       select: {

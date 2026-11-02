@@ -75,7 +75,7 @@ export async function GET(request, { params }) {
   if (!authorization.allowed) {
     const status = authorization.reason === "movie_unavailable" ? 404 : 403;
     return Response.json(
-      { error: "An active Vistara access pass is required to watch this title." },
+      { error: "An active Vistara subscription is required to watch this title." },
       { status, headers: { "Cache-Control": "no-store" } },
     );
   }

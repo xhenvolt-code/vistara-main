@@ -2,7 +2,12 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import { saveAccessProduct, saveMovie, updateUserStatus } from "./actions";
+import {
+  grantTemporarySubscription,
+  saveAccessProduct,
+  saveMovie,
+  updateUserStatus,
+} from "./actions";
 import { ArtworkUploadField } from "./movies/artwork-upload-field";
 
 function ActionMessage({ state }) {
@@ -219,7 +224,7 @@ export function MovieEditor({ movie, label = "Add a movie" }) {
   );
 }
 
-export function ProductEditor({ product, label = "Add access product" }) {
+export function ProductEditor({ product, label = "Add subscription plan" }) {
   const [state, formAction, isPending] = useActionState(
     saveAccessProduct,
     null,
@@ -230,7 +235,7 @@ export function ProductEditor({ product, label = "Add access product" }) {
       <input name="id" type="hidden" value={product?.id ?? ""} />
       <div className="admin-form-grid">
         <label>
-          Product name
+          Subscription plan name
           <input
             defaultValue={product?.name ?? ""}
             maxLength={100}
@@ -239,7 +244,7 @@ export function ProductEditor({ product, label = "Add access product" }) {
           />
         </label>
         <label>
-          Duration (days)
+          Subscription duration (days)
           <input
             defaultValue={product?.durationDays ?? 1}
             max={3650}
@@ -248,6 +253,9 @@ export function ProductEditor({ product, label = "Add access product" }) {
             required
             type="number"
           />
+          <small>
+            1 = daily, 7 = weekly, 14 = every two weeks, 30 = monthly (30 days).
+          </small>
         </label>
         <label>
           Price (UGX)
@@ -276,13 +284,54 @@ export function ProductEditor({ product, label = "Add access product" }) {
           name="isAvailable"
           type="checkbox"
         />
-        Available for purchase
+        Available for subscription
       </label>
       <button className="button-primary" disabled={isPending} type="submit">
         {isPending ? "Saving..." : label}
       </button>
       <ActionMessage state={state} />
     </form>
+  );
+}
+
+export function TemporarySubscriptionGrantForm({ userId }) {
+  const [state, formAction, isPending] = useActionState(
+    grantTemporarySubscription,
+    null,
+  );
+
+  return (
+    <details className="temporary-access-grant">
+      <summary>Grant temporary access</summary>
+      <form action={formAction} className="admin-form">
+        <input name="userId" type="hidden" value={userId} />
+        <label>
+          Duration (hours)
+          <input
+            defaultValue={24}
+            max={8760}
+            min={1}
+            name="durationHours"
+            required
+            type="number"
+          />
+        </label>
+        <label>
+          Reason
+          <input
+            maxLength={500}
+            minLength={3}
+            name="reason"
+            placeholder="Test access or support case"
+            required
+          />
+        </label>
+        <button className="button-secondary" disabled={isPending} type="submit">
+          {isPending ? "Granting..." : "Grant access"}
+        </button>
+        <ActionMessage state={state} />
+      </form>
+    </details>
   );
 }
 

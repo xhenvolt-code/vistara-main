@@ -70,7 +70,7 @@ export default async function AdminPaymentsPage() {
                     {purchase.createdAt.toLocaleString()}
                   </p>
                   <p>
-                    <strong>Pass snapshot:</strong> {purchase.durationDays} days
+                    <strong>Subscription term:</strong> {purchase.durationDays} days
                   </p>
                   {purchase.entitlement && (
                     <p>

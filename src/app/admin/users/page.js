@@ -5,7 +5,10 @@ import {
   AdminAccessNotice,
   AdminPageHeading,
 } from "../admin-ui";
-import { UserStatusForm } from "../admin-forms";
+import {
+  TemporarySubscriptionGrantForm,
+  UserStatusForm,
+} from "../admin-forms";
 
 export const metadata = { title: "User management" };
 
@@ -15,15 +18,6 @@ export default async function AdminUsersPage() {
 
   if (access.status !== "authorized") {
     return <AdminAccessNotice status={access.status} />;
-  }
-
-  if (access.role !== "superadmin") {
-    return (
-      <section className="admin-message">
-        <h1>Superadmin access required</h1>
-        <p>Only a superadmin can view user contact details or change account status.</p>
-      </section>
-    );
   }
 
   const users = await prisma.userProfile.findMany({
@@ -37,6 +31,7 @@ export default async function AdminUsersPage() {
       .filter(Boolean),
   );
   const userIds = users.map((user) => user.userId);
+  const now = new Date();
   const [purchaseCounts, activeEntitlements] = userIds.length
     ? await Promise.all([
         prisma.purchase.groupBy({
@@ -48,10 +43,11 @@ export default async function AdminUsersPage() {
           by: ["userId"],
           where: {
             userId: { in: userIds },
+            startsAt: { lte: now },
             revokedAt: null,
-            expiresAt: { gt: new Date() },
+            expiresAt: { gt: now },
           },
-          _count: { _all: true },
+          _max: { expiresAt: true },
         }),
       ])
     : [[], []];
@@ -59,16 +55,21 @@ export default async function AdminUsersPage() {
     purchaseCounts.map((entry) => [entry.userId, entry._count._all]),
   );
   const entitlementsByUser = new Map(
-    activeEntitlements.map((entry) => [entry.userId, entry._count._all]),
+    activeEntitlements.map((entry) => [
+      entry.userId,
+      {
+        expiresAt: entry._max.expiresAt,
+      },
+    ]),
   );
 
   return (
     <>
       <AdminPageHeading title="User accounts" />
       <p className="muted admin-intro">
-        Account controls update Vistara profile status. Suspended profiles are
-        blocked from starting purchases; authentication credentials remain
-        managed by Neon Auth.
+        Administrators can grant temporary subscription access for testing and
+        support. Only superadmins can view email addresses or change account
+        status; authentication credentials remain managed by Neon Auth.
       </p>
       <section className="admin-panel">
         <h2>Registered profiles</h2>
@@ -80,9 +81,10 @@ export default async function AdminUsersPage() {
                   <th scope="col">Account</th>
                   <th scope="col">Status</th>
                   <th scope="col">Purchases</th>
-                  <th scope="col">Active passes</th>
+                  <th scope="col">Active subscription</th>
                   <th scope="col">Joined</th>
-                  <th scope="col">Action</th>
+                  <th scope="col">Subscription access</th>
+                  {access.role === "superadmin" && <th scope="col">Account action</th>}
                 </tr>
               </thead>
               <tbody>
@@ -91,26 +93,37 @@ export default async function AdminUsersPage() {
                     <td>
                       <strong>{user.displayName || "Vistara user"}</strong>
                       <span className="admin-user-email">
-                        {user.email || user.userId}
+                        {access.role === "superadmin"
+                          ? user.email || user.userId
+                          : `User ID: ${user.userId}`}
                       </span>
                     </td>
                     <td>{user.accountStatus}</td>
                     <td>{purchasesByUser.get(user.userId) ?? 0}</td>
-                    <td>{entitlementsByUser.get(user.userId) ?? 0}</td>
+                    <td>
+                      {entitlementsByUser.has(user.userId)
+                        ? `Until ${entitlementsByUser.get(user.userId).expiresAt?.toLocaleString()}`
+                        : "None"}
+                    </td>
                     <td>{user.createdAt.toLocaleDateString()}</td>
                     <td>
-                      {user.email &&
-                      superadmins.has(user.email.toLowerCase()) ? (
-                        <span className="status-pill status-info">
-                          Protected superadmin
-                        </span>
-                      ) : (
-                        <UserStatusForm
-                          status={user.accountStatus}
-                          userId={user.userId}
-                        />
-                      )}
+                      <TemporarySubscriptionGrantForm userId={user.userId} />
                     </td>
+                    {access.role === "superadmin" && (
+                      <td>
+                        {user.email &&
+                        superadmins.has(user.email.toLowerCase()) ? (
+                          <span className="status-pill status-info">
+                            Protected superadmin
+                          </span>
+                        ) : (
+                          <UserStatusForm
+                            status={user.accountStatus}
+                            userId={user.userId}
+                          />
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

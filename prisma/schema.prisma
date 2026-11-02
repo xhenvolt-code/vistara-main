@@ -228,15 +228,18 @@ model PaymentEvent {
 model Entitlement {
   id         String    @id @default(cuid())
   userId     String
-  purchaseId String    @unique
+  purchaseId String?   @unique
   startsAt   DateTime
   expiresAt  DateTime
   revokedAt  DateTime?
+  grantedBy  String?
+  grantReason String?  @db.Text
   createdAt  DateTime  @default(now())
-  purchase   Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  purchase   Purchase? @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
 
   @@index([userId, expiresAt])
   @@index([userId, revokedAt, expiresAt])
+  @@index([grantedBy, createdAt])
 }
 
 model FinancialSharePolicy {

@@ -17,7 +17,7 @@ export const metadata = {
     template: "%s | Vistara",
   },
   description:
-    "Discover films and find the right access pass for your next movie night.",
+    "Discover films and find the right viewing subscription for your next movie night.",
 };
 
 export default function RootLayout({ children }) {

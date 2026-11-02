@@ -6,7 +6,7 @@ const navigation = [
   { href: "/admin/movies", label: "Movie library" },
   { href: "/admin/movies/new", label: "Upload movie" },
   { href: "/admin/catalogue", label: "Rights & genres" },
-  { href: "/admin/products", label: "Access products" },
+  { href: "/admin/products", label: "Subscription plans" },
   { href: "/admin/payments", label: "Purchases & payments" },
   { href: "/admin/finance", label: "Revenue shares" },
   { href: "/admin/users", label: "Users" },

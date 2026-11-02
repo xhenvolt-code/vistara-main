@@ -4,6 +4,7 @@ import {
   AdminAccessNotice,
   AdminPageHeading,
 } from "../admin-ui";
+import { getMarzPayReadiness } from "@/server/payments/marzpay";
 
 export const metadata = { title: "System settings" };
 
@@ -37,14 +38,19 @@ const integrations = [
   },
   {
     label: "MarzPay",
-    configured: () =>
-      Boolean(process.env.MARZPAY_API_KEY && process.env.MARZPAY_API_SECRET),
-    detail: "Mobile-money collection and verified callbacks",
+    configured: () => getMarzPayReadiness().apiConfigured,
+    detail: "API credentials and secure provider URL for mobile-money collection",
   },
   {
-    label: "MarzPay webhook",
-    configured: () => Boolean(process.env.MARZPAY_CALLBACK_URL),
-    detail: "Public HTTPS callback required before checkout",
+    label: "MarzPay callback URL",
+    configured: () => getMarzPayReadiness().callbackConfigured,
+    detail:
+      "Public HTTPS /api/payments/marzpay/webhook URL required for checkout",
+  },
+  {
+    label: "MarzPay webhook signature",
+    configured: () => getMarzPayReadiness().webhookConfigured,
+    detail: "Webhook signing secret for authenticating provider callbacks",
   },
   {
     label: "Cloudinary",

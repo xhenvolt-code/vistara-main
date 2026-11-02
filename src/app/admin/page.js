@@ -10,7 +10,7 @@ const panels = [
   { href: "/admin/movies", title: "Movie library", text: "Find, review, preview, and publish movies." },
   { href: "/admin/movies/new", title: "Upload movie", text: "Choose a supported video and enter its title. Add other details later." },
   { href: "/admin/catalogue", title: "Rights & genres", text: "Document distribution clearances and organize the catalogue." },
-  { href: "/admin/products", title: "Access products", text: "Set pass durations, prices, ordering, and availability." },
+  { href: "/admin/products", title: "Subscription plans", text: "Set plan durations, prices, ordering, and availability." },
   { href: "/admin/payments", title: "Purchases & payments", text: "Review purchase states, MarzPay transactions, and event history." },
   { href: "/admin/finance", title: "Revenue shares", text: "Assign administrator shares, record reinvestment choices, and review payout requests." },
   { href: "/admin/users", title: "Users", text: "Review Vistara profiles and account status." },
@@ -86,7 +86,7 @@ export default async function AdminOverviewPage() {
           <small>{pendingRights.toLocaleString()} have rights pending review</small>
         </article>
         <article className="admin-metric">
-          <span>Access products</span>
+          <span>Subscription plans</span>
           <strong>{products.toLocaleString()}</strong>
           <small>{users.toLocaleString()} Vistara user profiles</small>
         </article>

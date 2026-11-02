@@ -4,7 +4,7 @@ import { prisma } from "@/server/db/prisma";
 import { AdminAccessNotice, AdminPageHeading, formatAdminCurrency } from "../admin-ui";
 import { ProductEditor } from "../admin-forms";
 
-export const metadata = { title: "Access products" };
+export const metadata = { title: "Subscription plans" };
 
 export default async function AdminProductsPage() {
   await connection();
@@ -21,20 +21,20 @@ export default async function AdminProductsPage() {
 
   return (
     <>
-      <AdminPageHeading title="Access products" />
+      <AdminPageHeading title="Subscription plans" />
       <p className="muted admin-intro">
-        Product price and duration are copied into each purchase at checkout.
-        Disabling a product prevents new purchases but preserves existing
+        Plan price and term are copied into each purchase at checkout.
+        Disabling a plan prevents new subscriptions but preserves existing
         purchase records.
       </p>
 
       <section className="admin-panel">
-        <h2>Create a pass</h2>
+        <h2>Create a subscription plan</h2>
         <ProductEditor />
       </section>
 
       <section className="admin-panel">
-        <h2>Configured products</h2>
+        <h2>Configured plans</h2>
         {products.length ? (
           <div className="admin-record-list">
             {products.map((product) => (
@@ -43,7 +43,15 @@ export default async function AdminProductsPage() {
                   <span>
                     <strong>{product.name}</strong>
                     <small>
-                      {product.durationDays} days ·{" "}
+                      {product.durationDays === 1
+                        ? "Daily"
+                        : product.durationDays === 7
+                          ? "Weekly"
+                          : product.durationDays === 14
+                            ? "Every two weeks"
+                            : product.durationDays === 30
+                              ? "Monthly (30 days)"
+                              : `${product.durationDays} days`} ·{" "}
                       {formatAdminCurrency(product.priceUgx)} ·{" "}
                       {product._count.purchases} purchases
                     </small>
@@ -54,12 +62,12 @@ export default async function AdminProductsPage() {
                     {product.isAvailable ? "Available" : "Disabled"}
                   </span>
                 </summary>
-                <ProductEditor product={product} label="Save product" />
+                <ProductEditor product={product} label="Save plan" />
               </details>
             ))}
           </div>
         ) : (
-          <p className="muted">No access products have been configured.</p>
+          <p className="muted">No subscription plans have been configured.</p>
         )}
       </section>
     </>
