@@ -22,7 +22,7 @@ export async function GET(_request, { params }) {
       videoAssets: {
         where: {
           status: "READY",
-          provider: "NEON_OBJECT_STORAGE",
+          provider: { in: ["CLOUDINARY", "NEON_OBJECT_STORAGE"] },
           contentType: "video/mp4",
           fileSizeBytes: { not: null },
         },

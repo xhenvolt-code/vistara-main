@@ -131,9 +131,9 @@ async function HomeCatalogue() {
           </div>
         )}
         <p className="catalogue-availability-note">
-          Protected playback currently supports MP4 titles stored in Neon
-          Object Storage. Online purchases are not available yet; access pass
-          prices, when listed, are for preview only.
+          Protected playback is configured for MP4 titles stored in Cloudinary
+          or Neon Object Storage. Online purchases are not available yet;
+          access pass prices, when listed, are for preview only.
         </p>
       </section>
     </>
