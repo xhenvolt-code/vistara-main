@@ -7,6 +7,7 @@ import {
   encryptMobileAuthSession,
   extractMobileAuthSessionCookie,
   hashMobileAuthSecret,
+  isAllowedMobileAuthOrigin,
 } from "../src/server/auth/mobile-auth-handoff.js";
 
 test("mobile auth handoff tokens are random URL-safe secrets", () => {
@@ -26,6 +27,49 @@ test("mobile auth handoff proof uses a URL-safe SHA-256 challenge", () => {
   assert.notEqual(
     createMobileAuthCodeChallenge("first-verifier"),
     createMobileAuthCodeChallenge("second-verifier"),
+  );
+});
+
+test("mobile auth exchange allows only the configured app and Vercel production origins", () => {
+  assert.equal(
+    isAllowedMobileAuthOrigin(
+      "https://vistara-main.vercel.app",
+      "https://vistara.example",
+      "vistara-main.vercel.app",
+    ),
+    true,
+  );
+  assert.equal(
+    isAllowedMobileAuthOrigin(
+      "https://vistara.example",
+      "https://vistara.example",
+      "vistara-main.vercel.app",
+    ),
+    true,
+  );
+  assert.equal(
+    isAllowedMobileAuthOrigin(
+      "https://attacker.example",
+      "https://vistara.example",
+      "vistara-main.vercel.app",
+    ),
+    false,
+  );
+  assert.equal(
+    isAllowedMobileAuthOrigin(
+      "https://vistara-main.vercel.app.attacker.example",
+      "https://vistara.example",
+      "vistara-main.vercel.app",
+    ),
+    false,
+  );
+  assert.equal(
+    isAllowedMobileAuthOrigin(
+      "https://vistara-main.vercel.app",
+      "https://vistara.example",
+      "https://vistara-main.vercel.app",
+    ),
+    false,
   );
 });
 

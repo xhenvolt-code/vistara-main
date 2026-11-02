@@ -2,6 +2,7 @@ import {
   createMobileAuthCodeChallenge,
   decryptMobileAuthSession,
   hashMobileAuthSecret,
+  isAllowedMobileAuthOrigin,
   mobileAuthSessionCookieName,
 } from "@/server/auth/mobile-auth-handoff";
 import { prisma } from "@/server/db/prisma";
@@ -33,7 +34,13 @@ export async function POST(request) {
       503,
     );
   }
-  if (request.headers.get("origin") !== appOrigin) {
+  if (
+    !isAllowedMobileAuthOrigin(
+      request.headers.get("origin"),
+      appOrigin,
+      process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    )
+  ) {
     return jsonResponse({ error: "The sign-in request is not allowed." }, 403);
   }
 

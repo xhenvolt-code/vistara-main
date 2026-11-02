@@ -31,6 +31,32 @@ export function createMobileAuthCodeChallenge(verifier) {
   return createHash("sha256").update(verifier).digest("base64url");
 }
 
+export function isAllowedMobileAuthOrigin(
+  origin,
+  appOrigin,
+  vercelProjectProductionUrl,
+) {
+  if (origin === appOrigin) return true;
+  if (
+    typeof origin !== "string" ||
+    typeof vercelProjectProductionUrl !== "string" ||
+    !vercelProjectProductionUrl ||
+    /[/:?#@]/.test(vercelProjectProductionUrl)
+  ) {
+    return false;
+  }
+
+  const productionOrigin = `https://${vercelProjectProductionUrl.toLowerCase()}`;
+  try {
+    return (
+      new URL(productionOrigin).origin === productionOrigin &&
+      origin === productionOrigin
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function extractMobileAuthSessionCookie(cookieHeader) {
   if (typeof cookieHeader !== "string" || cookieHeader.length > 16_384) {
     return null;

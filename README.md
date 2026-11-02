@@ -98,7 +98,7 @@ Use `.env.example` as the variable-name reference. Do not commit `.env.local`.
 | --- | --- |
 | `DATABASE_URL`, `DIRECT_URL` | Neon pooled runtime and direct database connections |
 | `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET` | Neon Managed Auth endpoint and signed session-cookie secret |
-| `APP_BASE_URL` | Canonical application origin used to construct auth callback links |
+| `APP_BASE_URL` | Canonical application origin used to construct auth callback links and authorize mobile auth exchanges |
 | `ADMIN_EMAILS`, `SUPERADMIN_EMAILS` | Server-side administrator and superadministrator allowlists |
 | `AWS_ENDPOINT_URL_S3`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `STORAGE_BUCKET` | S3-compatible Neon Object Storage access for inventory and artwork |
 | `STORAGE_HARD_LIMIT_BYTES` | Advisory application storage limit; not an enforced Neon quota |
@@ -110,6 +110,10 @@ Use `.env.example` as the variable-name reference. Do not commit `.env.local`.
 Keep production secrets in the hosting provider's secret manager. Rotate any
 credentials that have been shared outside that trusted store. Do not print
 secret values while diagnosing provider configuration.
+
+On Vercel, enable system environment variables so mobile auth exchanges also
+accept the project's production domain (`VERCEL_PROJECT_PRODUCTION_URL`) when
+it differs from `APP_BASE_URL`.
 
 ## Database lifecycle and deployment
 
