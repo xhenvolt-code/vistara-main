@@ -328,3 +328,15 @@ model AuditLog {
   @@index([actorId, createdAt])
   @@index([entityType, entityId, createdAt])
 }
+
+model MobileAuthHandoff {
+  id                     String    @id @default(cuid())
+  tokenHash              String    @unique
+  stateHash              String
+  proofHash              String
+  encryptedSessionCookie String   @db.Text
+  expiresAt              DateTime
+  createdAt              DateTime @default(now())
+
+  @@index([expiresAt])
+}
