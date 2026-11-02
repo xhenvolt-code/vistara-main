@@ -2,7 +2,10 @@ import { auth } from "@/server/auth/neon";
 import { isValidByteRange } from "@/domain/video-playback";
 import { prisma } from "@/server/db/prisma";
 import { authorizePlayback } from "@/server/services/entitlements";
-import { fetchCloudinaryVideo } from "@/server/storage/cloudinary-video";
+import {
+  CloudinaryPlaybackConfigurationError,
+  fetchCloudinaryVideo,
+} from "@/server/storage/cloudinary-video";
 import { getNeonVideoObject } from "@/server/storage/neon-object-storage";
 
 function storageFailure(error, slug) {
@@ -46,12 +49,16 @@ export async function GET(request, { params }) {
         where: {
           status: "READY",
           provider: { in: ["CLOUDINARY", "NEON_OBJECT_STORAGE"] },
-          contentType: "video/mp4",
+          contentType: { startsWith: "video/" },
           fileSizeBytes: { not: null },
         },
         orderBy: { updatedAt: "desc" },
         take: 1,
-        select: { provider: true, providerAssetId: true },
+        select: {
+          provider: true,
+          providerAssetId: true,
+          playbackProfile: true,
+        },
       },
     },
   });
@@ -99,9 +106,19 @@ export async function GET(request, { params }) {
   try {
     object =
       asset.provider === "CLOUDINARY"
-        ? await fetchCloudinaryVideo(asset.providerAssetId, range ?? undefined)
+        ? await fetchCloudinaryVideo(
+            asset.providerAssetId,
+            range ?? undefined,
+            asset.playbackProfile,
+          )
         : await getNeonVideoObject(asset.providerAssetId, range ?? undefined);
   } catch (error) {
+    if (error instanceof CloudinaryPlaybackConfigurationError) {
+      return Response.json(
+        { error: error.message },
+        { status: 503, headers: { "Cache-Control": "no-store" } },
+      );
+    }
     return storageFailure(error, slug);
   }
 

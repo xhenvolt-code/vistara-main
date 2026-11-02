@@ -18,7 +18,7 @@ async function MovieDetails({ params }) {
         some: {
           status: "READY",
           provider: { in: ["CLOUDINARY", "NEON_OBJECT_STORAGE"] },
-          contentType: "video/mp4",
+          contentType: { startsWith: "video/" },
           fileSizeBytes: { not: null },
         },
       },
@@ -29,7 +29,7 @@ async function MovieDetails({ params }) {
         where: {
           status: "READY",
           provider: { in: ["CLOUDINARY", "NEON_OBJECT_STORAGE"] },
-          contentType: "video/mp4",
+          contentType: { startsWith: "video/" },
           fileSizeBytes: { not: null },
         },
         orderBy: { updatedAt: "desc" },
@@ -122,7 +122,7 @@ async function MovieDetails({ params }) {
               : authorization.reason === "account_suspended"
                 ? "This account cannot play videos. Contact Vistara support if you think this is a mistake."
                 : authorization.allowed
-                  ? "This title does not yet have a verified MP4 streaming asset."
+                  ? "This title does not yet have a verified video streaming asset."
                   : "An active Vistara access pass is required to watch this title."}
           </span>
         </div>

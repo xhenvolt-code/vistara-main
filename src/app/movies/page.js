@@ -33,7 +33,7 @@ async function MovieResults({ searchParams }) {
         some: {
           status: "READY",
           provider: { in: ["CLOUDINARY", "NEON_OBJECT_STORAGE"] },
-          contentType: "video/mp4",
+          contentType: { startsWith: "video/" },
           fileSizeBytes: { not: null },
         },
       },

@@ -3,6 +3,8 @@ import { connection } from "next/server";
 import { getAdminAccess } from "@/server/auth/admin";
 import { AdminShell } from "./admin-ui";
 
+export const instant = false;
+
 async function AdminContent({ children }) {
   await connection();
   const access = await getAdminAccess();

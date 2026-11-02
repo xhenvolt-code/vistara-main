@@ -1,13 +1,18 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { MAX_VIDEO_UPLOAD_BYTES } from "@/domain/video-playback";
+import {
+  getMovieVideoFormat,
+  MAX_VIDEO_UPLOAD_BYTES,
+} from "@/domain/video-playback";
 import { getAdminAccess } from "@/server/auth/admin";
 import { prisma } from "@/server/db/prisma";
-import { createCloudinaryVideoUpload } from "@/server/storage/cloudinary-video";
+import {
+  createCloudinaryVideoUpload,
+  PRIVATE_CLOUDINARY_PLAYBACK_PROFILE,
+} from "@/server/storage/cloudinary-video";
 
 const uploadSchema = z.object({
   filename: z.string().trim().min(1).max(240),
-  contentType: z.literal("video/mp4"),
   fileSizeBytes: z.number().int().positive().max(MAX_VIDEO_UPLOAD_BYTES),
 });
 
@@ -46,10 +51,16 @@ export async function POST(request, { params }) {
   }
 
   const parsed = uploadSchema.safeParse(body);
+  const videoFormat = parsed.success
+    ? getMovieVideoFormat(parsed.data.filename)
+    : null;
 
-  if (!parsed.success || !parsed.data.filename.toLowerCase().endsWith(".mp4")) {
+  if (!parsed.success || !videoFormat) {
     return Response.json(
-      { error: "Choose an MP4 file no larger than 5 GiB." },
+      {
+        error:
+          "Choose a supported video file (MP4, M4V, MOV, WebM, MKV, AVI, MPEG, OGV, or 3GP) no larger than 5 GiB.",
+      },
       { status: 400 },
     );
   }
@@ -72,9 +83,10 @@ export async function POST(request, { params }) {
         movieId: movie.id,
         provider: "CLOUDINARY",
         providerAssetId: publicId,
+        playbackProfile: PRIVATE_CLOUDINARY_PLAYBACK_PROFILE,
         status: "UPLOADING",
         originalFilename: parsed.data.filename.split(/[\\/]/).pop(),
-        contentType: "video/mp4",
+        contentType: videoFormat.contentType,
         fileSizeBytes: BigInt(parsed.data.fileSizeBytes),
       },
       select: { id: true },
@@ -120,6 +132,7 @@ export async function POST(request, { params }) {
         signature: upload.signature,
         publicId: upload.publicId,
         type: upload.type,
+        accessControl: upload.accessControl,
       },
       { status: 201, headers: { "Cache-Control": "no-store" } },
     );

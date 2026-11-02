@@ -1,6 +1,9 @@
 "use client";
 
-import { MAX_VIDEO_UPLOAD_BYTES } from "../../../domain/video-playback.js";
+import {
+  getMovieVideoFormat,
+  MAX_VIDEO_UPLOAD_BYTES,
+} from "../../../domain/video-playback.js";
 
 async function readJson(response) {
   const body = await response.json();
@@ -69,6 +72,9 @@ function uploadChunk(upload, file, start, end, uniqueUploadId, onProgress) {
     form.append("signature", upload.signature);
     form.append("public_id", upload.publicId);
     form.append("type", upload.type);
+    if (upload.accessControl) {
+      form.append("access_control", upload.accessControl);
+    }
     request.send(form);
   });
 }
@@ -83,7 +89,6 @@ export async function uploadMovieVideo(movieId, file, { onProgress, onStatus }) 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         filename: file.name,
-        contentType: "video/mp4",
         fileSizeBytes: file.size,
       }),
     });
@@ -147,7 +152,7 @@ export function isValidMovieVideo(file) {
     file &&
       file.size > 0 &&
       file.size <= MAX_VIDEO_UPLOAD_BYTES &&
-      file.name.toLowerCase().endsWith(".mp4"),
+      getMovieVideoFormat(file.name),
   );
 }
 

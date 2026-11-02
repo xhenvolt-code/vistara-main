@@ -15,7 +15,7 @@ async function HomeCatalogue() {
         some: {
           status: "READY",
           provider: { in: ["CLOUDINARY", "NEON_OBJECT_STORAGE"] },
-          contentType: "video/mp4",
+          contentType: { startsWith: "video/" },
           fileSizeBytes: { not: null },
         },
       },
@@ -131,8 +131,9 @@ async function HomeCatalogue() {
           </div>
         )}
         <p className="catalogue-availability-note">
-          Protected playback is configured for MP4 titles stored in Cloudinary
-          or Neon Object Storage. Online purchases are not available yet;
+          Cloudinary converts supported uploads to browser-friendly MP4 during
+          playback. Neon Object Storage currently serves MP4 originals.
+          Online purchases are not available yet;
           access pass prices, when listed, are for preview only.
         </p>
       </section>

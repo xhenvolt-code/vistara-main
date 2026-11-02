@@ -227,7 +227,7 @@ export default async function MovieLibraryPage({ searchParams }) {
                   <Link className="text-link" href={`/admin/movies/${movie.id}`}>
                     {asset?.status === "READY"
                       ? "Manage movie media"
-                      : "Upload MP4 video"}
+                      : "Upload video"}
                   </Link>
                 </div>
               </article>
@@ -239,11 +239,11 @@ export default async function MovieLibraryPage({ searchParams }) {
           <h2>{total === 0 && !q && !status && !videoStatus && !genre ? "Your movie library is ready" : "No movies match these filters"}</h2>
           <p>
             {total === 0 && !q && !status && !videoStatus && !genre
-              ? "Choose an MP4 and enter its title to create a draft. Add optional details later."
+              ? "Choose a supported video and enter its title to create a draft. Add optional details later."
               : "Try changing the search or filters to find another movie."}
           </p>
           <Link className="button-primary" href="/admin/movies/new">
-            Upload an MP4
+            Upload a video
           </Link>
         </section>
       )}

@@ -2,8 +2,10 @@ import { getAdminAccess } from "@/server/auth/admin";
 import { prisma } from "@/server/db/prisma";
 import {
   deleteCloudinaryVideoAsset,
+  PRIVATE_CLOUDINARY_PLAYBACK_PROFILE,
   verifyCloudinaryVideoUpload,
 } from "@/server/storage/cloudinary-video";
+import { getMovieVideoFormat } from "@/domain/video-playback";
 
 function isSameOrigin(request) {
   const appBaseUrl = process.env.APP_BASE_URL;
@@ -35,6 +37,8 @@ export async function POST(request, { params }) {
       id: true,
       movieId: true,
       providerAssetId: true,
+      playbackProfile: true,
+      originalFilename: true,
       contentType: true,
       fileSizeBytes: true,
     },
@@ -45,9 +49,14 @@ export async function POST(request, { params }) {
   }
 
   let resource;
+  const deliveryType = asset.playbackProfile ? "private" : "authenticated";
+  const expectedFormat = getMovieVideoFormat(asset.originalFilename);
 
   try {
-    resource = await verifyCloudinaryVideoUpload(asset.providerAssetId);
+    resource = await verifyCloudinaryVideoUpload(
+      asset.providerAssetId,
+      deliveryType,
+    );
   } catch (error) {
     console.error("Video upload completion could not be verified.", {
       movieId,
@@ -67,8 +76,13 @@ export async function POST(request, { params }) {
   if (
     resource.public_id !== asset.providerAssetId ||
     resource.resource_type !== "video" ||
-    resource.type !== "authenticated" ||
-    resource.format?.toLowerCase() !== "mp4" ||
+    resource.type !== deliveryType ||
+    !expectedFormat?.cloudinaryFormats.includes(resource.format?.toLowerCase()) ||
+    asset.contentType !== expectedFormat?.contentType ||
+    (asset.playbackProfile === PRIVATE_CLOUDINARY_PLAYBACK_PROFILE &&
+      !resource.access_control?.some(
+        (rule) => rule.access_type === "token",
+      )) ||
     uploadedBytes !== asset.fileSizeBytes
   ) {
     const failed = await prisma.videoAsset.updateMany({
@@ -83,7 +97,7 @@ export async function POST(request, { params }) {
       );
     }
 
-    await deleteCloudinaryVideoAsset(asset.providerAssetId);
+    await deleteCloudinaryVideoAsset(asset.providerAssetId, deliveryType);
     await prisma.auditLog.create({
       data: {
         actorId: access.userId,

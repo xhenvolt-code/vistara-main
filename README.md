@@ -19,11 +19,11 @@ intended environment.
 | --- | --- | --- |
 | Customer application | Responsive homepage, discovery, movie detail, passes, sign-in/sign-up and reset screens | Catalogue is database-backed; only publish content with documented rights and a verified supported video |
 | Authentication | Neon email auth, Google OAuth callback, profile synchronization, admin allowlists | Verify OAuth, cookies, reset, and account lifecycle on the deployed domain |
-| Administration | Overview, movie library/search/filtering, metadata, poster/backdrop uploads, direct MP4 upload, movie preview/playback, rights, products, payments, users, storage, audit, and revenue-share screens | Server-side authorization is present; verify Cloudinary credentials, account limits, and production playback before use |
+| Administration | Overview, movie library/search/filtering, metadata, poster/backdrop uploads, direct video upload, movie preview/playback, rights, products, payments, users, storage, audit, and revenue-share screens | Server-side authorization is present; verify Cloudinary credentials, account limits, and production playback before use |
 | Payments | MarzPay Uganda collection API helper, callback verification, idempotent reconciliation, and entitlement creation | No live collection or settlement has been certified; the passes page currently says checkout is not enabled |
 | Revenue governance | Admin allocations from future verified gross collections, reinvestment preferences, audited payout requests, independent superadmin review | Internal accounting only; no legal equity, provider balance, or automated MarzPay payout |
 | Object storage | S3-compatible Neon Object Storage inventory and artwork uploads | Movie MP4 video is stored in Cloudinary, not Neon Object Storage |
-| Video | Signed, chunked Cloudinary MP4 uploads; server-side upload verification; admin preview; and entitlement-checked byte-range playback through Vistara | Cloudinary plan limits apply; transcoding, adaptive HLS/DASH, captions, and production streaming performance are not implemented or certified |
+| Video | Signed, chunked Cloudinary uploads for common containers; server-side verification; admin preview; entitlement-checked byte-range playback; and on-demand H.264/AAC MP4 delivery for new uploads | Cloudinary plan/transformation limits apply; this does not pre-encode the catalogue, and unsupported/corrupt source codecs may still fail |
 | Mobile API | Catalogue, available products, and authenticated profile/entitlement/purchase endpoints | Integrate and validate against the intended client before release |
 
 ## Technology
@@ -79,13 +79,16 @@ does not change the device's system theme.
 
 6. Open `http://localhost:3000`.
 
-To add a movie, open **Admin → Upload movie**, choose an MP4, enter its title,
-and select **Create movie and upload MP4**. The video uploads directly to
-Cloudinary in chunks while the new movie remains a draft. Artwork and other catalogue
-details are optional and can be added later in the movie workspace. The movie
-record must exist before artwork can be uploaded; save changes after uploading
-artwork to associate it with the record. Do not use media unless its
-distribution rights are cleared.
+To add a movie, open **Admin → Upload movie**, choose a supported video file,
+enter its title, and start the upload. The video uploads directly to Cloudinary
+in chunks while the new movie remains a draft. On first playback, Cloudinary
+generates a browser-friendly H.264/AAC MP4 rendition; the original is retained
+and the full catalogue is not pre-encoded. This uses Cloudinary transformation
+capacity and requires a plan that supports on-demand video transformations.
+Artwork and other catalogue details are optional and can be added later in the
+movie workspace. The movie record must exist before artwork can be uploaded;
+save changes after uploading artwork to associate it with the record. Do not
+use media unless its distribution rights are cleared.
 
 ## Environment configuration
 
@@ -99,7 +102,8 @@ Use `.env.example` as the variable-name reference. Do not commit `.env.local`.
 | `ADMIN_EMAILS`, `SUPERADMIN_EMAILS` | Server-side administrator and superadministrator allowlists |
 | `AWS_ENDPOINT_URL_S3`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `STORAGE_BUCKET` | S3-compatible Neon Object Storage access for inventory and artwork |
 | `STORAGE_HARD_LIMIT_BYTES` | Advisory application storage limit; not an enforced Neon quota |
-| `CLOUDINARY_URL` | Cloudinary credentials for signed MP4 upload, verification, and authenticated playback |
+| `CLOUDINARY_URL` | Cloudinary credentials for signed video upload, verification, and private delivery |
+| `CLOUDINARY_AUTH_TOKEN_KEY` | Hexadecimal key provisioned by Cloudinary Support for token-based access (Advanced plan or higher); keep it secret |
 | `MARZPAY_API_KEY`, `MARZPAY_API_SECRET`, `MARZPAY_BASE_URL` | MarzPay API configuration |
 | `MARZPAY_WEBHOOK_SECRET`, `MARZPAY_CALLBACK_URL` | Callback verification/configuration and public webhook URL |
 
@@ -164,20 +168,25 @@ this repository.
   completed transfer reference. The application does not send payouts through
   MarzPay.
 - Customer playback checks the signed-in user's active paid entitlement on
-  each request, including byte-range reads. Cloudinary assets use authenticated
-  delivery and a short-lived server-generated download URL; the Cloudinary URL
-  is not exposed to the browser. The admin preview is also proxied through the
-  application.
-- Movie MP4 uploads are signed by the server and sent directly from the browser
-  to Cloudinary in chunks. The application allows files up to 5 GiB, subject to
-  Cloudinary account limits. Neon Object Storage remains in use for artwork
-  and storage inventory; artwork uploads continue to depend on its configured
-  endpoint and CORS policy.
-- A successfully uploaded MP4 is marked ready only after Cloudinary confirms
-  the authenticated video asset, MP4 format, and expected file size. This
-  verifies the uploaded asset only; it does not inspect codecs, scan the file,
-  transcode it, or create adaptive renditions. This is not yet a high-scale
-  streaming architecture.
+  each request, including byte-range reads. Cloudinary URLs are signed by the
+  server and include a short-lived token when token-based access control is
+  enabled; the Cloudinary URL is not exposed to the browser. The admin preview
+  is also proxied through the application.
+- Supported video uploads are signed by the server and sent directly from the
+  browser to Cloudinary in chunks. The application allows files up to 5 GiB,
+  subject to Cloudinary account limits. New uploads use private delivery so
+  Cloudinary can generate an H.264/AAC MP4 rendition on demand. Existing
+  authenticated assets continue to use their original MP4 and are not
+  dynamically transcoded. Neon Object Storage remains in use for artwork and
+  storage inventory; its movie playback path currently accepts MP4 only.
+- An upload is marked ready only after Cloudinary confirms its delivery type,
+  container format, and expected file size. This does not inspect/repair every
+  codec or scan content. For token-protected assets, configure
+  `CLOUDINARY_AUTH_TOKEN_KEY` with the hexadecimal key provisioned by Cloudinary
+  Support. Token-based access requires the Advanced plan or higher and must be
+  enabled for the Cloudinary product environment; the API secret is not a
+  substitute. On-demand transformations may incur plan usage and billing, and
+  this is not yet a high-scale streaming architecture.
 - The storage screen reports objects visible to the configured S3-compatible
   bucket/branch. It is not a project-wide Neon billing meter, and the configured
   cap is advisory until uploads enforce it.

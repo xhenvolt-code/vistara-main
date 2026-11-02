@@ -28,7 +28,7 @@ export async function POST(request, { params }) {
       provider: "CLOUDINARY",
       status: "UPLOADING",
     },
-    select: { id: true, providerAssetId: true },
+    select: { id: true, providerAssetId: true, playbackProfile: true },
   });
 
   if (!asset) {
@@ -36,9 +36,11 @@ export async function POST(request, { params }) {
   }
 
   try {
-    return Response.json(createCloudinaryVideoUpload(asset.providerAssetId), {
-      headers: { "Cache-Control": "no-store" },
-    });
+    const type = asset.playbackProfile ? "private" : "authenticated";
+    return Response.json(
+      createCloudinaryVideoUpload(asset.providerAssetId, type),
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (error) {
     console.error("Could not sign a Cloudinary video upload chunk.", {
       movieId,

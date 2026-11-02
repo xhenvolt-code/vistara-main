@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  getMovieVideoFormat,
   isSafeArtworkObjectKey,
   isSafeMp4ObjectKey,
   isValidByteRange,
@@ -49,16 +50,30 @@ test("playback rejects malformed and multipart byte ranges", () => {
   assert.equal(isValidByteRange("bytes=0-10,20-30"), false);
 });
 
-test("movie upload accepts MP4 files up to 5 GiB", () => {
+test("movie upload accepts supported video containers up to 5 GiB", () => {
   assert.equal(isValidMovieVideo({ name: "film.mp4", size: 1024 }), true);
+  assert.equal(isValidMovieVideo({ name: "film.MOV", size: 1024 }), true);
+  assert.equal(isValidMovieVideo({ name: "film.webm", size: 1024 }), true);
+  assert.equal(isValidMovieVideo({ name: "film.mkv", size: 1024 }), true);
+  assert.equal(isValidMovieVideo({ name: "film.avi", size: 1024 }), true);
   assert.equal(
     isValidMovieVideo({ name: "film.MP4", size: 5 * 1024 * 1024 * 1024 }),
     true,
   );
-  assert.equal(isValidMovieVideo({ name: "film.mov", size: 1024 }), false);
+  assert.equal(isValidMovieVideo({ name: "film.exe", size: 1024 }), false);
   assert.equal(
     isValidMovieVideo({ name: "film.mp4", size: 5 * 1024 * 1024 * 1024 + 1 }),
     false,
   );
   assert.equal(isValidMovieVideo(null), false);
+});
+
+test("video format metadata is derived from supported filename extensions", () => {
+  assert.equal(getMovieVideoFormat("film.mp4").contentType, "video/mp4");
+  assert.equal(getMovieVideoFormat("film.MOV").contentType, "video/quicktime");
+  assert.deepEqual(getMovieVideoFormat("film.ogv").cloudinaryFormats, [
+    "ogv",
+    "ogg",
+  ]);
+  assert.equal(getMovieVideoFormat("film.unknown"), null);
 });

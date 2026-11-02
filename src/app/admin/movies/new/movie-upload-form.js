@@ -44,7 +44,9 @@ export function MovieUploadForm() {
     event.preventDefault();
     if (!isValidMovieVideo(file)) {
       setUploadStatus("error");
-      setMessage("Choose an MP4 video file no larger than 5 GiB.");
+      setMessage(
+        "Choose a supported video file (MP4, M4V, MOV, WebM, MKV, AVI, MPEG, OGV, or 3GP) no larger than 5 GiB.",
+      );
       return;
     }
 
@@ -86,9 +88,9 @@ export function MovieUploadForm() {
       {!movieId && (
         <form className="movie-upload-form" onSubmit={handleSubmit}>
           <label className="video-upload-picker">
-            <span>Movie video (MP4) <strong>Required</strong></span>
+            <span>Movie video <strong>Required</strong></span>
             <input
-              accept="video/mp4,.mp4"
+              accept="video/mp4,video/x-m4v,video/quicktime,video/webm,video/x-matroska,video/x-msvideo,video/mpeg,video/ogg,video/3gpp,.mp4,.m4v,.mov,.webm,.mkv,.avi,.mpg,.mpeg,.ogv,.3gp"
               disabled={uploadStatus === "creating" || uploadStatus === "uploading"}
               onChange={(event) => {
                 setFile(event.target.files?.[0] ?? null);
@@ -128,8 +130,8 @@ export function MovieUploadForm() {
             {uploadStatus === "creating"
               ? "Creating movie..."
               : uploadStatus === "uploading"
-                ? "Uploading MP4..."
-                : "Create movie and upload MP4"}
+                ? "Uploading video..."
+                : "Create movie and upload video"}
           </button>
         </form>
       )}
@@ -182,10 +184,13 @@ export function MovieUploadForm() {
         </Link>
       )}
       <p className="muted video-upload-disclaimer">
-        Title and MP4 are the only required fields. You can add artwork, synopsis,
+        Title and video are the only required fields. You can add artwork, synopsis,
         cast, rights information, and other details from the movie workspace.
-        MP4 files can be up to 5 GiB, subject to your Cloudinary account&apos;s
-        upload limits. Videos are not transcoded.
+        Supported formats can be up to 5 GiB, subject to Cloudinary account
+        limits. Cloudinary converts new uploads on first playback; it does not
+        pre-encode the full library. On-demand conversions use Cloudinary
+        transformation capacity, and unsupported or damaged source codecs may
+        still fail.
       </p>
     </div>
   );

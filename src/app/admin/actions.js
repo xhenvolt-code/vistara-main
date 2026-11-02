@@ -154,7 +154,7 @@ export async function saveMovie(_previousState, formData) {
         movieId: data.id,
         status: "READY",
         provider: { in: ["CLOUDINARY", "NEON_OBJECT_STORAGE"] },
-        contentType: "video/mp4",
+        contentType: { startsWith: "video/" },
         fileSizeBytes: { not: null },
       },
       select: { id: true },
@@ -189,7 +189,7 @@ export async function saveMovie(_previousState, formData) {
             movieId: data.id,
             status: "READY",
             provider: { in: ["CLOUDINARY", "NEON_OBJECT_STORAGE"] },
-            contentType: "video/mp4",
+            contentType: { startsWith: "video/" },
             fileSizeBytes: { not: null },
           },
           select: { id: true },
@@ -296,7 +296,7 @@ export async function saveMovie(_previousState, formData) {
     if (error?.code === "P2022") {
       return {
         error:
-          "The database does not have the optional movie-detail columns yet. Apply the pending movie-media migration to save director, cast, and content rating. A title and MP4 can still be uploaded from the movie upload page.",
+          "The database does not have the optional movie-detail columns yet. Apply the pending movie-media migration to save director, cast, and content rating. A title and video can still be uploaded from the movie upload page.",
       };
     }
     if (

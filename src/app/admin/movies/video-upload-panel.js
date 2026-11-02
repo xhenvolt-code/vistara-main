@@ -55,9 +55,9 @@ export function VideoUploadPanel({ movieId }) {
   return (
     <form className="video-upload-panel" onSubmit={handleUpload}>
       <label className="video-upload-picker">
-        <span>Choose an MP4 video</span>
+        <span>Choose a video</span>
         <input
-          accept="video/mp4,.mp4"
+          accept="video/mp4,video/x-m4v,video/quicktime,video/webm,video/x-matroska,video/x-msvideo,video/mpeg,video/ogg,video/3gpp,.mp4,.m4v,.mov,.webm,.mkv,.avi,.mpg,.mpeg,.ogv,.3gp"
           disabled={status === "uploading"}
           onChange={(event) => {
             const selectedFile = event.target.files?.[0] ?? null;
@@ -74,7 +74,7 @@ export function VideoUploadPanel({ movieId }) {
         <div className="video-upload-file">
           <strong>{file.name}</strong>
           <span>
-            {formatVideoBytes(file.size)} · MP4 · Maximum 5 GiB
+            {formatVideoBytes(file.size)} · Maximum 5 GiB
           </span>
         </div>
       )}
@@ -111,8 +111,11 @@ export function VideoUploadPanel({ movieId }) {
       </button>
       <p className="muted video-upload-disclaimer">
         Uploads go directly from this browser to Cloudinary in chunks. The app
-        allows MP4 files up to 5 GiB, subject to your Cloudinary
-        account&apos;s limits. Videos are not transcoded.
+        accepts supported video formats up to 5 GiB, subject to Cloudinary
+        account limits. Cloudinary converts new uploads to H.264/AAC MP4 on
+        first playback, so the full library is not pre-encoded. This uses
+        Cloudinary transformation capacity; unsupported or damaged source
+        codecs may still fail.
       </p>
     </form>
   );

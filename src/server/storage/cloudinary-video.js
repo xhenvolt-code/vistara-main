@@ -1,6 +1,18 @@
 import "server-only";
 import { v2 as cloudinary } from "cloudinary";
 
+export const PRIVATE_CLOUDINARY_PLAYBACK_PROFILE = "cloudinary:private:h264";
+const tokenAccessControl = [{ access_type: "token" }];
+
+export class CloudinaryPlaybackConfigurationError extends Error {
+  constructor() {
+    super(
+      "CLOUDINARY_AUTH_TOKEN_KEY must be configured to play token-protected Cloudinary videos.",
+    );
+    this.name = "CloudinaryPlaybackConfigurationError";
+  }
+}
+
 function getCloudinaryConfig() {
   const config = cloudinary.config();
 
@@ -11,13 +23,20 @@ function getCloudinaryConfig() {
   return config;
 }
 
-export function createCloudinaryVideoUpload(publicId) {
+function getCloudinaryDeliveryType(playbackProfile) {
+  return playbackProfile === PRIVATE_CLOUDINARY_PLAYBACK_PROFILE
+    ? "private"
+    : "authenticated";
+}
+
+export function createCloudinaryVideoUpload(publicId, type = "private") {
   const { cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret } =
     getCloudinaryConfig();
   const timestamp = Math.floor(Date.now() / 1000);
-  const type = "authenticated";
+  const accessControl =
+    type === "private" ? JSON.stringify(tokenAccessControl) : undefined;
   const signature = cloudinary.utils.api_sign_request(
-    { public_id: publicId, timestamp, type },
+    { public_id: publicId, timestamp, type, access_control: accessControl },
     apiSecret,
   );
 
@@ -28,35 +47,66 @@ export function createCloudinaryVideoUpload(publicId) {
     signature,
     publicId,
     type,
+    ...(accessControl ? { accessControl } : {}),
   };
 }
 
-export async function verifyCloudinaryVideoUpload(publicId) {
+export async function verifyCloudinaryVideoUpload(publicId, type = "private") {
   getCloudinaryConfig();
   return cloudinary.api.resource(publicId, {
     resource_type: "video",
-    type: "authenticated",
+    type,
   });
 }
 
-export async function deleteCloudinaryVideoAsset(publicId) {
+export async function deleteCloudinaryVideoAsset(publicId, type = "private") {
   getCloudinaryConfig();
   return cloudinary.uploader.destroy(publicId, {
     resource_type: "video",
-    type: "authenticated",
+    type,
     invalidate: true,
   });
 }
 
-export async function fetchCloudinaryVideo(publicId, range) {
+export async function fetchCloudinaryVideo(publicId, range, playbackProfile) {
   getCloudinaryConfig();
-  const signedUrl = cloudinary.utils.private_download_url(publicId, "mp4", {
-    resource_type: "video",
-    type: "authenticated",
-    expires_at: Math.floor(Date.now() / 1000) + 300,
-  });
+  const authTokenKey = process.env.CLOUDINARY_AUTH_TOKEN_KEY;
 
-  return fetch(signedUrl, {
+  if (!authTokenKey || !/^(?:[a-f\d]{2})+$/i.test(authTokenKey)) {
+    throw new CloudinaryPlaybackConfigurationError();
+  }
+
+  const isOnDemandTranscode =
+    playbackProfile === PRIVATE_CLOUDINARY_PLAYBACK_PROFILE;
+  const signedUrl = cloudinary.url(publicId, {
+    resource_type: "video",
+    type: getCloudinaryDeliveryType(playbackProfile),
+    format: "mp4",
+    force_version: false,
+    sign_url: true,
+    auth_token: false,
+    secure: true,
+    urlAnalytics: false,
+    ...(isOnDemandTranscode
+      ? {
+          transformation: [
+            {
+              video_codec: "h264",
+              audio_codec: "aac",
+              quality: "auto",
+            },
+          ],
+        }
+      : {}),
+  });
+  const token = cloudinary.utils.generate_auth_token({
+    key: authTokenKey,
+    duration: 300,
+    url: new URL(signedUrl).pathname,
+  });
+  const deliveryUrl = `${signedUrl}?${token}`;
+
+  return fetch(deliveryUrl, {
     headers: range ? { Range: range } : undefined,
     cache: "no-store",
   });

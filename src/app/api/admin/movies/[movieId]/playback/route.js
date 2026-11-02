@@ -1,7 +1,10 @@
 import { getAdminAccess } from "@/server/auth/admin";
 import { isValidByteRange } from "@/domain/video-playback";
 import { prisma } from "@/server/db/prisma";
-import { fetchCloudinaryVideo } from "@/server/storage/cloudinary-video";
+import {
+  CloudinaryPlaybackConfigurationError,
+  fetchCloudinaryVideo,
+} from "@/server/storage/cloudinary-video";
 import { getNeonVideoObject } from "@/server/storage/neon-object-storage";
 
 export async function GET(request, { params }) {
@@ -20,16 +23,21 @@ export async function GET(request, { params }) {
       movieId,
       provider: { in: ["CLOUDINARY", "NEON_OBJECT_STORAGE"] },
       status: "READY",
-      contentType: "video/mp4",
+      contentType: { startsWith: "video/" },
       fileSizeBytes: { not: null },
     },
     orderBy: { updatedAt: "desc" },
-    select: { provider: true, providerAssetId: true, contentType: true },
+    select: {
+      provider: true,
+      providerAssetId: true,
+      playbackProfile: true,
+      contentType: true,
+    },
   });
 
   if (!asset) {
     return Response.json(
-      { error: "This movie has no verified MP4 playback asset." },
+      { error: "This movie has no verified video playback asset." },
       { status: 404, headers: { "Cache-Control": "no-store" } },
     );
   }
@@ -51,9 +59,19 @@ export async function GET(request, { params }) {
   try {
     object =
       asset.provider === "CLOUDINARY"
-        ? await fetchCloudinaryVideo(asset.providerAssetId, range ?? undefined)
+        ? await fetchCloudinaryVideo(
+            asset.providerAssetId,
+            range ?? undefined,
+            asset.playbackProfile,
+          )
         : await getNeonVideoObject(asset.providerAssetId, range ?? undefined);
   } catch (error) {
+    if (error instanceof CloudinaryPlaybackConfigurationError) {
+      return Response.json(
+        { error: error.message },
+        { status: 503, headers: { "Cache-Control": "no-store" } },
+      );
+    }
     console.error("Admin video preview failed to load from storage.", {
       movieId,
       message: error instanceof Error ? error.message : "Unknown storage error",

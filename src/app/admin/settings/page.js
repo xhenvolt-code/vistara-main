@@ -49,7 +49,17 @@ const integrations = [
   {
     label: "Cloudinary",
     configured: () => Boolean(process.env.CLOUDINARY_URL),
-    detail: "Signed movie video uploads and authenticated playback",
+    detail: "Signed movie uploads and on-demand H.264/AAC MP4 delivery",
+  },
+  {
+    label: "Cloudinary token access",
+    configured: () =>
+      Boolean(
+        process.env.CLOUDINARY_AUTH_TOKEN_KEY &&
+          /^(?:[a-f\d]{2})+$/i.test(process.env.CLOUDINARY_AUTH_TOKEN_KEY),
+      ),
+    detail:
+      "Requires Cloudinary Support to enable token access and provision a key (Advanced plan or higher)",
   },
 ];
 

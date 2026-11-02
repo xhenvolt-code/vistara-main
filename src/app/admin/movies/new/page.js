@@ -17,8 +17,8 @@ export default async function NewMoviePage() {
     <>
       <AdminPageHeading eyebrow="Movie management" title="Upload a movie" />
       <p className="muted admin-intro">
-        Select the MP4 and enter its title. Vistara creates a draft and begins
-        uploading the video right away; add any other catalogue details later.
+        Select a supported video and enter its title. Vistara creates a draft
+        and begins uploading right away; add other catalogue details later.
       </p>
       <section className="admin-panel">
         <h2>Movie video</h2>

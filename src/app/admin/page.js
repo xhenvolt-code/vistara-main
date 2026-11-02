@@ -8,7 +8,7 @@ export const metadata = { title: "Admin overview" };
 
 const panels = [
   { href: "/admin/movies", title: "Movie library", text: "Find, review, preview, and publish movies." },
-  { href: "/admin/movies/new", title: "Upload movie", text: "Choose an MP4 and enter its title. Add other details later." },
+  { href: "/admin/movies/new", title: "Upload movie", text: "Choose a supported video and enter its title. Add other details later." },
   { href: "/admin/catalogue", title: "Rights & genres", text: "Document distribution clearances and organize the catalogue." },
   { href: "/admin/products", title: "Access products", text: "Set pass durations, prices, ordering, and availability." },
   { href: "/admin/payments", title: "Purchases & payments", text: "Review purchase states, MarzPay transactions, and event history." },

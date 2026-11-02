@@ -67,7 +67,7 @@ export default async function MovieWorkspacePage({ params }) {
     (asset) =>
       asset.status === "READY" &&
       ["CLOUDINARY", "NEON_OBJECT_STORAGE"].includes(asset.provider) &&
-      asset.contentType === "video/mp4" &&
+      asset.contentType?.startsWith("video/") &&
       asset.fileSizeBytes !== null,
   );
 
@@ -76,7 +76,7 @@ export default async function MovieWorkspacePage({ params }) {
       <AdminPageHeading eyebrow="Movie management" title={movie.title}>
         {movie.status !== "ARCHIVED" && (
           <Link className="button-primary" href="#video-upload">
-            {readyAsset ? "Replace MP4 video" : "Upload MP4 video"}
+            {readyAsset ? "Replace video" : "Upload video"}
           </Link>
         )}
         <Link className="button-secondary" href="/admin/movies">
@@ -131,8 +131,9 @@ export default async function MovieWorkspacePage({ params }) {
         <section className="admin-panel" id="video-upload">
           <h2>{readyAsset ? "Replace movie video" : "Upload movie video"}</h2>
           <p className="muted">
-            Select an MP4 file up to 5 GiB. It uploads directly to Cloudinary,
-            then Vistara verifies it before making it available.
+            Upload a supported video file up to 5 GiB. Cloudinary converts new
+            uploads to browser-friendly MP4 on first playback; the original is
+            retained.
           </p>
           <VideoUploadPanel movieId={movie.id} />
         </section>
@@ -149,8 +150,8 @@ export default async function MovieWorkspacePage({ params }) {
           />
         ) : (
           <p className="muted">
-            Playback preview becomes available after an MP4 upload is completed
-            and verified in Cloudinary.
+            Playback preview becomes available after a video upload is
+            completed and verified in Cloudinary.
           </p>
         )}
       </section>
