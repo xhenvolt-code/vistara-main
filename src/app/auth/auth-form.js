@@ -7,7 +7,7 @@ import { signInWithEmail, signUpWithEmail } from "./actions";
 
 const authClient = createAuthClient();
 
-export function AuthForm({ mode }) {
+export function AuthForm({ mode, passwordReset = false }) {
   const isSignUp = mode === "sign-up";
   const action = isSignUp ? signUpWithEmail : signInWithEmail;
   const [state, formAction, isPending] = useActionState(action, null);
@@ -46,11 +46,17 @@ export function AuthForm({ mode }) {
       <p className="muted">
         {isSignUp
           ? "Create an account with your email to keep your movie access in one place."
-          : "Sign in with your email and password to continue to Vistara."}
+          : "Sign in with email and password, or continue with Google."}
       </p>
+      {passwordReset && (
+        <p aria-live="polite" className="form-success" role="status">
+          Your password has been set. You can now sign in with email and
+          password, or continue with Google.
+        </p>
+      )}
       {!isSignUp && (
         <Link className="auth-forgot-link" href="/auth/forgot-password">
-          Forgot password?
+          Set or reset password
         </Link>
       )}
       {isSignUp && (
@@ -86,9 +92,18 @@ export function AuthForm({ mode }) {
         />
       </label>
       {state?.error && (
-        <p aria-live="polite" className="form-error" role="alert">
-          {state.error}
-        </p>
+        <div aria-live="polite" className="form-error" role="alert">
+          <p>{state.error}</p>
+          {!isSignUp && (
+            <p>
+              If you first used Google with this email, choose{" "}
+              <Link className="text-link" href="/auth/forgot-password">
+                Set or reset password
+              </Link>{" "}
+              to enable password sign-in for the same account.
+            </p>
+          )}
+        </div>
       )}
       {googleError && (
         <p aria-live="polite" className="form-error" role="alert">

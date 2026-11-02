@@ -136,6 +136,21 @@ input {
   color: var(--accent);
 }
 
+.header-account-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.header-account {
+  max-width: 260px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .header-action,
 .button-primary,
 .button-secondary {
@@ -147,6 +162,13 @@ input {
   padding: 0 20px;
   font-weight: 700;
   transition: transform 160ms ease, background-color 160ms ease;
+}
+
+.header-action {
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
 }
 
 .header-action,
@@ -619,6 +641,39 @@ input {
 
 .site-footer p {
   margin: 0;
+}
+
+.site-footer > .site-attribution,
+.site-attribution {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+}
+
+.site-attribution {
+  display: none;
+}
+
+.site-footer .site-attribution {
+  display: inline-flex;
+}
+
+.site-attribution strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.site-attribution-heart {
+  width: 15px;
+  height: 15px;
+  fill: #e5484d;
+}
+
+.site-attribution-security {
+  margin-left: 8px;
+  border-left: 1px solid var(--line);
+  padding-left: 8px;
 }
 
 .empty-state {
@@ -1772,6 +1827,10 @@ button:disabled {
     font-size: 0.82rem;
   }
 
+  .header-account {
+    display: none;
+  }
+
   .mobile-home {
     display: block;
     padding: 22px 0 calc(32px + env(safe-area-inset-bottom));
@@ -2296,6 +2355,32 @@ button:disabled {
     color: var(--accent);
   }
 
+  .mobile-account-form {
+    display: flex;
+    min-width: 0;
+  }
+
+  .mobile-account-form button {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.65rem;
+  }
+
+  .mobile-account-form button:hover,
+  .mobile-account-form button:focus-visible {
+    color: var(--accent);
+  }
+
   .mobile-bottom-nav svg {
     width: 20px;
     height: 20px;
@@ -2307,5 +2392,13 @@ button:disabled {
 
   .site-footer {
     display: none;
+  }
+
+  .site-attribution {
+    display: inline-flex;
+    justify-content: center;
+    margin: 8px 18px 14px;
+    text-align: center;
+    flex-wrap: wrap;
   }
 }

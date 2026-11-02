@@ -11,10 +11,11 @@ export function ForgotPasswordForm() {
 
   return (
     <form action={formAction} className="auth-form">
-      <h1 className="page-title">Reset your password</h1>
+      <h1 className="page-title">Set or reset your password</h1>
       <p className="muted">
-        Enter your account email and we’ll send password reset instructions if
-        an account is registered.
+        Enter the same verified email you use with Vistara. If you created your
+        account with Google, this lets you add email-and-password sign-in to
+        that account; Google sign-in will continue to work too.
       </p>
       <label>
         Email
@@ -37,7 +38,7 @@ export function ForgotPasswordForm() {
         </p>
       )}
       <button className="button-primary" disabled={isPending} type="submit">
-        {isPending ? "Sending..." : "Send reset instructions"}
+        {isPending ? "Sending..." : "Send password setup instructions"}
       </button>
     </form>
   );

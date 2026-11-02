@@ -62,9 +62,10 @@ export function ResetPasswordForm({ token }) {
 
   return (
     <form action={resetPassword} className="auth-form">
-      <h1 className="page-title">Choose a new password</h1>
+      <h1 className="page-title">Set or update your password</h1>
       <p className="muted">
-        Use at least 12 characters to keep your account protected.
+        Use at least 12 characters. You can keep using Google sign-in after
+        setting a password.
       </p>
       <label>
         New password

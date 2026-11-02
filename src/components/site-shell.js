@@ -1,7 +1,44 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Suspense } from "react";
+import { connection } from "next/server";
+import { signOut } from "@/app/auth/actions";
+import { auth } from "@/server/auth/neon";
 
-export function SiteHeader() {
+function FooterCredit() {
+  return (
+    <p className="site-attribution">
+      Designed with{" "}
+      <svg
+        aria-label="love"
+        className="site-attribution-heart"
+        role="img"
+        viewBox="0 0 24 24"
+      >
+        <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z" />
+      </svg>{" "}
+      by <strong>Xhenvolt Uganda</strong>
+      <span className="site-attribution-security">Secured by Neon Auth</span>
+    </p>
+  );
+}
+
+async function getSignedInUser() {
+  await connection();
+  const { data: session, error } = await auth.getSession();
+
+  if (error) {
+    throw new Error("Unable to verify the current authentication session.", {
+      cause: error,
+    });
+  }
+
+  return session?.user ?? null;
+}
+
+async function SiteHeaderContent() {
+  const user = await getSignedInUser();
+
   return (
     <header className="site-header">
       <Link className="brand" href="/" aria-label="Vistara home">
@@ -19,14 +56,61 @@ export function SiteHeader() {
         <Link href="/passes">Access passes</Link>
         <Link href="/admin">Admin</Link>
       </nav>
-      <Link className="header-action" href="/auth/sign-in">
-        Sign in
-      </Link>
+      <div className="header-account-actions">
+        {user && (
+          <span className="header-account" title={user.email || "Signed in"}>
+            {user.email || "Signed in"}
+          </span>
+        )}
+        {user ? (
+          <form action={signOut}>
+            <button className="header-action" type="submit">
+              Sign out
+            </button>
+          </form>
+        ) : (
+          <Link className="header-action" href="/auth/sign-in">
+            Sign in
+          </Link>
+        )}
+      </div>
     </header>
   );
 }
 
-export function SiteFooter() {
+function SiteHeaderFallback() {
+  return (
+    <header className="site-header">
+      <Link className="brand" href="/" aria-label="Vistara home">
+        <Image
+          alt=""
+          className="brand-icon"
+          height={34}
+          src="/vistara-icon.png"
+          width={34}
+        />
+        <span className="brand-name">VISTARA<span>.</span></span>
+      </Link>
+      <nav aria-label="Main navigation" className="site-nav">
+        <Link href="/movies">Discover</Link>
+        <Link href="/passes">Access passes</Link>
+        <Link href="/admin">Admin</Link>
+      </nav>
+    </header>
+  );
+}
+
+export function SiteHeader() {
+  return (
+    <Suspense fallback={<SiteHeaderFallback />}>
+      <SiteHeaderContent />
+    </Suspense>
+  );
+}
+
+async function SiteFooterContent() {
+  const user = await getSignedInUser();
+
   return (
     <>
       <footer className="site-footer">
@@ -42,7 +126,9 @@ export function SiteFooter() {
         </Link>
         <p>Stories worth staying in for.</p>
         <span>Uganda · UGX</span>
+        <FooterCredit />
       </footer>
+      <FooterCredit />
       <nav aria-label="Mobile navigation" className="mobile-bottom-nav">
         <Link href="/" aria-label="Home">
           <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -64,13 +150,25 @@ export function SiteFooter() {
           </svg>
           <span>Passes</span>
         </Link>
-        <Link href="/auth/sign-in" aria-label="Account">
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <circle cx="12" cy="8" r="4" />
-            <path d="M4 21a8 8 0 0 1 16 0" />
-          </svg>
-          <span>Account</span>
-        </Link>
+        {user ? (
+          <form action={signOut} className="mobile-account-form">
+            <button aria-label="Sign out" type="submit">
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 21a8 8 0 0 1 16 0" />
+              </svg>
+              <span>Sign out</span>
+            </button>
+          </form>
+        ) : (
+          <Link href="/auth/sign-in" aria-label="Account">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 21a8 8 0 0 1 16 0" />
+            </svg>
+            <span>Account</span>
+          </Link>
+        )}
         <Link href="/admin" aria-label="Administration">
           <svg aria-hidden="true" viewBox="0 0 24 24">
             <path d="M12 3 20 6v5c0 5-3.4 8.3-8 10-4.6-1.7-8-5-8-10V6z" />
@@ -80,5 +178,53 @@ export function SiteFooter() {
         </Link>
       </nav>
     </>
+  );
+}
+
+function SiteFooterFallback() {
+  return (
+    <>
+      <footer className="site-footer">
+        <Link className="brand" href="/">
+          <Image
+            alt=""
+            className="brand-icon"
+            height={34}
+            src="/vistara-icon.png"
+            width={34}
+          />
+          <span className="brand-name">VISTARA<span>.</span></span>
+        </Link>
+        <p>Stories worth staying in for.</p>
+        <span>Uganda · UGX</span>
+        <FooterCredit />
+      </footer>
+      <FooterCredit />
+      <nav aria-label="Mobile navigation" className="mobile-bottom-nav">
+        <Link href="/" aria-label="Home">
+          <span>Home</span>
+        </Link>
+        <Link href="/movies" aria-label="Discover">
+          <span>Discover</span>
+        </Link>
+        <Link href="/passes" aria-label="Passes">
+          <span>Passes</span>
+        </Link>
+        <Link href="/auth/sign-in" aria-label="Account">
+          <span>Account</span>
+        </Link>
+        <Link href="/admin" aria-label="Administration">
+          <span>Admin</span>
+        </Link>
+      </nav>
+    </>
+  );
+}
+
+export function SiteFooter() {
+  return (
+    <Suspense fallback={<SiteFooterFallback />}>
+      <SiteFooterContent />
+    </Suspense>
   );
 }

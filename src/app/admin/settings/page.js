@@ -20,6 +20,12 @@ const integrations = [
     detail: "Email/password and Google OAuth sessions",
   },
   {
+    label: "Clerk",
+    configured: () => false,
+    detail:
+      "Not integrated; requires Clerk setup and an approved account-migration plan",
+  },
+  {
     label: "Neon Object Storage",
     configured: () =>
       Boolean(
@@ -87,6 +93,30 @@ export default async function AdminSettingsPage() {
             );
           })}
         </div>
+      </section>
+      <section className="admin-panel">
+        <h2>Authentication provider</h2>
+        <div className="admin-integration-list">
+          <article className="admin-integration">
+            <span
+              aria-label="Active provider"
+              className="admin-health-dot is-ready"
+            />
+            <div>
+              <strong>Neon Auth</strong>
+              <span>
+                Active provider. Existing users and sessions remain on Neon.
+              </span>
+            </div>
+            <span className="status-pill status-paid">Active</span>
+          </article>
+        </div>
+        <p className="muted">
+          Provider switching is unavailable until Clerk is integrated and the
+          user, password, social-account, profile-ID, and session migration
+          plan is approved. This prevents a provider change from locking out
+          existing users.
+        </p>
       </section>
       <section className="admin-panel">
         <h2>Administrator access</h2>

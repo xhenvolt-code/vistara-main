@@ -65,6 +65,32 @@ export async function signInWithEmail(_previousState, formData) {
 
   if (session?.user) {
     await syncAuthProfile(session.user);
+  } else {
+    return {
+      error:
+        "Sign-in was accepted, but no active session was established. Please try again.",
+    };
+  }
+
+  redirect("/");
+}
+
+export async function signOut() {
+  let result;
+
+  try {
+    result = await auth.signOut();
+  } catch (error) {
+    console.error("Neon Auth sign-out request failed.", {
+      message: error instanceof Error ? error.message : "Unknown authentication error",
+    });
+    throw new Error("Unable to sign out. Please try again.", { cause: error });
+  }
+
+  if (result.error) {
+    throw new Error("Unable to sign out. Please try again.", {
+      cause: result.error,
+    });
   }
 
   redirect("/");
@@ -114,6 +140,11 @@ export async function signUpWithEmail(_previousState, formData) {
 
   if (session?.user) {
     await syncAuthProfile(session.user);
+  } else {
+    return {
+      error:
+        "Your account was created, but no active session was established. Please sign in.",
+    };
   }
 
   redirect("/");
